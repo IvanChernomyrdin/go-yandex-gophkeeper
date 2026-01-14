@@ -1,0 +1,2 @@
+// Дешифрование payload
+package crypto

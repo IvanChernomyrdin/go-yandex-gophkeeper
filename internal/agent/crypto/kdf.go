@@ -1,0 +1,2 @@
+// Мастер ключ
+package crypto
