@@ -1,3 +1,11 @@
+gophkeeper:
+    - получает команду, её парсит и выполняет
+    - хранит access/refresh токены локально в ~/.gophkeeper/config.json (права 0600), при refresh получает данные из поля refresh и обновляет access;
+
+
+
+Структура проекта представлена ниже.
+
 gophkeeper/
 ├── .github/
 │   └── workflows/
@@ -28,19 +36,8 @@ gophkeeper/
 │   │   │   │   # - логин
 │   │   │   │   # - refresh токенов
 │   │   │   │
-│   │   │   ├── secrets.go
-│   │   │   │   # HTTP CRUD-хендлеры для приватных данных
-│   │   │   │
-│   │   │   └── dto/
-│   │   │       ├── auth.go
-│   │   │       │   # DTO для auth API:
-│   │   │       │   # - RegisterRequest / Response
-│   │   │       │   # - LoginRequest / Response
-│   │   │       │
-│   │   │       └── secrets.go
-│   │   │           # DTO для secrets API:
-│   │   │           # - Create / Get / List / Update / Delete
-│   │   │           # DTO = контракт API + Swagger
+│   │   │   └── secrets.go
+│   │   │       # HTTP CRUD-хендлеры для приватных данных
 │   │   │
 │   │   ├── service/
 │   │   │   ├── auth.go
@@ -120,24 +117,8 @@ gophkeeper/
 │   │   │   ├── auth.go
 │   │   │   │   # Вызовы auth API сервера
 │   │   │   │
-│   │   │   ├── secrets.go
-│   │   │   │   # Вызовы CRUD API сервера
-│   │   │   │
-│   │   │   └── dto/
-│   │   │       ├── auth.go
-│   │   │       │   # DTO для auth API
-│   │   │       │
-│   │   │       └── secrets.go
-│   │   │           # DTO для secrets API
-│   │   │
-│   │   ├── storage/
-│   │   │   └── memory.go
-│   │   │       # In-memory cache клиента
-│   │   │       # (ускорение CLI, не source of truth)
-│   │   │
-│   │   ├── models/
-│   │   │   └── secret.go
-│   │   │       # Внутренние модели CLI
+│   │   │   └── secrets.go
+│   │   │       # Вызовы CRUD API сервера
 │   │   │
 │   │   ├── config/
 │   │   │   └── config.go

@@ -1,1 +1,127 @@
 # Конфигурация сервера (БД, порты, ключи)
+env: "dev" # dev|stage|prod
+
+server:
+  host: "127.0.0.1"
+  port: 8080
+  # можно вместо host+port поддержать addr: "127.0.0.1:8080" (на твой вкус)
+
+  # доверять ли заголовкам прокси (X-Forwarded-For/X-Forwarded-Proto)
+  trust_proxy: false
+
+  # таймауты HTTP
+  read_timeout: 5s
+  read_header_timeout: 5s
+  write_timeout: 10s
+  idle_timeout: 60s
+  shutdown_timeout: 10s
+
+  # ограничения
+  max_header_bytes: 1048576         # 1MB
+  max_body_bytes: 2097152           # 2MB
+
+tls:
+  # Для dev можно выключать и гонять по http, для prod — true.
+  enabled: true
+  cert_file: "./certs/server.crt"
+  key_file: "./certs/server.key"
+  min_version: "1.2"
+  h2: true
+
+db:
+  dsn: "postgres://${DB_LOGIN}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}?sslmode=disable"
+  max_open_conns: 20
+  max_idle_conns: 10
+  conn_max_lifetime: 30m
+  conn_max_idle_time: 10m
+  query_timeout: 3s
+
+migrations:
+  enabled: true
+  path: "./migrations"
+  lock_timeout: 10s
+
+auth:
+  issuer: "gophkeeper"
+  audience: "gophkeeper-cli"
+
+  access_ttl: 15m
+  refresh_ttl: 720h
+
+  jwt:
+    algorithm: "HS256"
+    # нужно проверить что мы делаем expand env или читаем key из env напрямую
+    signing_key: "${JWT_SIGNING_KEY}"
+
+  sessions:
+    store: "db"
+    rotate_refresh: true
+    reuse_detection: true
+    max_sessions_per_user: 10
+
+password:
+  hasher: "argon2id"                # argon2id|bcrypt
+
+  argon2:
+    time: 3
+    memory_kib: 65536               # 64MB
+    threads: 2
+    key_len: 32
+    salt_len: 16
+
+  bcrypt:
+    cost: 12
+
+secrets:
+  # Сервер хранит ciphertext (шифрование на клиенте)
+  store_ciphertext: true
+  max_payload_bytes: 1048576        # 1MB
+  max_meta_bytes: 65536             # 64KB
+  allowed_types:
+    - "login_password"
+    - "text"
+    - "binary"
+    - "bank_card"
+    - "otp"
+
+# Для CLI без локального хранилища отдельная "sync" секция не обязательна.
+# Достаточно optimistic locking на update/delete через version/updated_at.
+concurrency:
+  strategy: "optimistic_lock"       # optimistic_lock|last_write_wins
+  conflict_policy: "reject"         # reject|server_wins|client_wins
+
+security:
+  rate_limit:
+    enabled: true
+    rps: 10
+    burst: 20
+    key: "ip"                       # ip|user
+
+
+log:
+  logger: "zap"
+  level: "info"                     # debug|info|warn|error
+  format: "json"                    # json|console
+  development: false
+  sampling:
+    enabled: true
+    initial: 100
+    thereafter: 100
+  redact:
+    enabled: true
+    fields:
+      - "password"
+      - "token"
+      - "access_token"
+      - "refresh_token"
+      - "authorization"
+      - "payload"
+      - "ciphertext"
+
+observability:
+  metrics:
+    enabled: true
+    path: "/metrics"
+  pprof:
+    enabled: false
+    path_prefix: "/debug/pprof"

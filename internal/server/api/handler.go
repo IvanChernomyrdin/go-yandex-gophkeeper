@@ -1,0 +1,34 @@
+package api
+
+import (
+	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/middleware"
+	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service"
+	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/logger"
+)
+
+// Handler агрегирует зависимости HTTP-слоя и предоставляет методы-хендлеры.
+//
+// Handler содержит:
+//   - Svc: сервисный слой (бизнес-логика);
+//   - Log: логгер для записи событий и ошибок;
+//   - Verifier: компонент проверки JWT и middleware авторизации.
+//
+// Методы Handler используются роутером для обработки HTTP-запросов.
+type Handler struct {
+	Svc      *service.Services
+	Log      *logger.HTTPLogger
+	Verifier *middleware.JWTVerifier
+}
+
+// NewHandler создаёт экземпляр Handler с переданными зависимостями.
+//
+// svc — набор сервисов приложения,
+// log — логгер,
+// verifier — JWT-проверка и middleware авторизации.
+func NewHandler(svc *service.Services, log *logger.HTTPLogger, verifier *middleware.JWTVerifier) *Handler {
+	return &Handler{
+		Svc:      svc,
+		Log:      log,
+		Verifier: verifier,
+	}
+}
