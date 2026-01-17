@@ -1,6 +1,9 @@
 package api
 
 import (
+	"encoding/json"
+	"net/http"
+
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/middleware"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/logger"
@@ -31,4 +34,13 @@ func NewHandler(svc *service.Services, log *logger.HTTPLogger, verifier *middlew
 		Log:      log,
 		Verifier: verifier,
 	}
+}
+
+// Вспомогательная функция вывода ошибки
+func WriteError(w http.ResponseWriter, status int, err error) {
+	w.Header().Set(ContentType, JsonContentType)
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(ErrorResponse{
+		Error: err.Error(),
+	})
 }

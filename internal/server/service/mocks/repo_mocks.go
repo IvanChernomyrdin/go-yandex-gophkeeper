@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 	time "time"
 
+	service "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service"
 	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -157,4 +158,45 @@ func (m *MockSessionsRepo) RevokeAndReplace(ctx context.Context, oldID, newID uu
 func (mr *MockSessionsRepoMockRecorder) RevokeAndReplace(ctx, oldID, newID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevokeAndReplace", reflect.TypeOf((*MockSessionsRepo)(nil).RevokeAndReplace), ctx, oldID, newID)
+}
+
+// MockSecretsRepo is a mock of SecretsRepo interface.
+type MockSecretsRepo struct {
+	ctrl     *gomock.Controller
+	recorder *MockSecretsRepoMockRecorder
+	isgomock struct{}
+}
+
+// MockSecretsRepoMockRecorder is the mock recorder for MockSecretsRepo.
+type MockSecretsRepoMockRecorder struct {
+	mock *MockSecretsRepo
+}
+
+// NewMockSecretsRepo creates a new mock instance.
+func NewMockSecretsRepo(ctrl *gomock.Controller) *MockSecretsRepo {
+	mock := &MockSecretsRepo{ctrl: ctrl}
+	mock.recorder = &MockSecretsRepoMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockSecretsRepo) EXPECT() *MockSecretsRepoMockRecorder {
+	return m.recorder
+}
+
+// Create mocks base method.
+func (m *MockSecretsRepo) Create(ctx context.Context, userID uuid.UUID, typ service.SecretType, title, payload string, meta *string) (uuid.UUID, int, time.Time, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, userID, typ, title, payload, meta)
+	ret0, _ := ret[0].(uuid.UUID)
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(time.Time)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockSecretsRepoMockRecorder) Create(ctx, userID, typ, title, payload, meta any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockSecretsRepo)(nil).Create), ctx, userID, typ, title, payload, meta)
 }

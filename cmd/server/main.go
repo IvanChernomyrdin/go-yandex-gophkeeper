@@ -88,10 +88,12 @@ func main() {
 	// создаём репы
 	usersRepo := repository.NewUsersRepository(db)
 	sessionsRepo := repository.NewSessionsRepository(config.GetDB())
+	secretsRepo := repository.NewSecretsRepository(db)
 	// складываем в репозиторий
 	repos := service.Repositories{
 		Users:    usersRepo,
 		Sessions: sessionsRepo,
+		Secrets:  secretsRepo,
 	}
 	// создаём сервис
 	svc := service.NewServices(repos, cfg)

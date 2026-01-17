@@ -52,11 +52,17 @@ type RefreshResponse struct {
 
 // Register обрабатывает регистрацию пользователя.
 //
-// Ответы:
-//   - 201 Created: регистрация успешна;
-//   - 400 Bad Request: неверный JSON или невалидные входные данные;
-//   - 409 Conflict: пользователь уже существует;
-//   - 500 Internal Server Error: прочие ошибки.
+// @Summary      Register user
+// @Description  Creates a new user account.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body RegisterRequest true "Register request"
+// @Success      201 {object} RegisterResponse
+// @Failure      400 {object} ErrorResponse "Invalid input or bad JSON"
+// @Failure      409 {object} ErrorResponse "User already exists"
+// @Failure      500 {object} ErrorResponse "Internal server error"
+// @Router       /auth/register [post]
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -85,11 +91,17 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 // Login обрабатывает вход пользователя и выдачу пары токенов.
 //
-// Ответы:
-//   - 200 OK: успешный вход;
-//   - 400 Bad Request: неверный JSON или невалидные входные данные;
-//   - 401 Unauthorized: неверные учётные данные;
-//   - 500 Internal Server Error: прочие ошибки.
+// @Summary      Login
+// @Description  Authenticates user and returns access/refresh tokens.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body LoginRequest true "Login request"
+// @Success      200 {object} LoginResponse
+// @Failure      400 {object} ErrorResponse "Invalid input or bad JSON"
+// @Failure      401 {object} ErrorResponse "Invalid credentials"
+// @Failure      500 {object} ErrorResponse "Internal server error"
+// @Router       /auth/login [post]
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -120,11 +132,17 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 // Refresh обрабатывает обновление access-токена по refresh-токену.
 //
-// Ответы:
-//   - 200 OK: успешное обновление токенов;
-//   - 400 Bad Request: неверный JSON или невалидные входные данные;
-//   - 401 Unauthorized: refresh токен недействителен/просрочен/отозван;
-//   - 500 Internal Server Error: прочие ошибки.
+// @Summary      Refresh tokens
+// @Description  Rotates refresh token and returns new access token.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body RefreshRequest true "Refresh request"
+// @Success      200 {object} RefreshResponse
+// @Failure      400 {object} ErrorResponse "Invalid input or bad JSON"
+// @Failure      401 {object} ErrorResponse "Unauthorized or token revoked"
+// @Failure      500 {object} ErrorResponse "Internal server error"
+// @Router       /auth/refresh [post]
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	var req RefreshRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

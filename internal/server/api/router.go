@@ -36,15 +36,16 @@ func NewRouter(h *Handler) http.Handler {
 	})
 	// защищены пути
 	r.Group(func(r chi.Router) {
+		// проверка access токена
 		r.Use(h.Verifier.AuthMiddleware())
-		// тут дальше будут secrets
-		// r.Route("/secrets", func(r chi.Router) {
-		//     r.Post("/", h.CreateSecret)
-		//     r.Get("/", h.ListSecrets)
-		//     r.Get("/{id}", h.GetSecret)
-		//     r.Put("/{id}", h.UpdateSecret)
-		//     r.Delete("/{id}", h.DeleteSecret)
-		// })
+		// CRUD запросы для секретов
+		r.Route("/secrets", func(r chi.Router) {
+			r.Post("/", h.CreateSecret) // Создание секрета
+			//     r.Get("/", h.ListSecrets)
+			//     r.Get("/{id}", h.GetSecret)
+			//     r.Put("/{id}", h.UpdateSecret)
+			//     r.Delete("/{id}", h.DeleteSecret)
+		})
 	})
 
 	return r

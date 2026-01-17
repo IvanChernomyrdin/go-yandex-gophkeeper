@@ -31,11 +31,13 @@ import (
 type Repositories struct {
 	Users    UsersRepo
 	Sessions SessionsRepo
+	Secrets  SecretsRepo
 }
 
 // Services — агрегатор всех сервисов приложения.
 type Services struct {
-	Auth *AuthService
+	Auth    *AuthService
+	Secrets *SecretsService
 }
 
 // NewServices собирает все сервисы приложения.
@@ -45,7 +47,8 @@ type Services struct {
 //   - TTL токенов и сессий.
 func NewServices(repos Repositories, cfg *config.Config) *Services {
 	return &Services{
-		Auth: NewAuthService(repos.Users, repos.Sessions, cfg),
+		Auth:    NewAuthService(repos.Users, repos.Sessions, cfg),
+		Secrets: NewSecretsService(repos.Secrets, cfg.Secrets),
 	}
 }
 
@@ -66,4 +69,26 @@ type SessionsRepo interface {
 	GetByRefreshHash(ctx context.Context, refreshHash []byte) (id uuid.UUID, userID uuid.UUID, expiresAt time.Time, revokedAt *time.Time, replacedBy *uuid.UUID, err error)
 	RevokeAndReplace(ctx context.Context, oldID, newID uuid.UUID) error
 	RevokeAllForUser(ctx context.Context, userID uuid.UUID) error
+}
+
+// SecretType тип секрета
+type SecretType string
+
+const (
+	SecretLoginPassword SecretType = "login_password"
+	SecretText          SecretType = "text"
+	SecretBinary        SecretType = "binary"
+	SecretBankCard      SecretType = "bank_card"
+	SecretOTP           SecretType = "otp"
+)
+
+type SecretsRepo interface {
+	Create(
+		ctx context.Context,
+		userID uuid.UUID,
+		typ SecretType,
+		title string,
+		payload string,
+		meta *string,
+	) (id uuid.UUID, version int, updatedAt time.Time, err error)
 }

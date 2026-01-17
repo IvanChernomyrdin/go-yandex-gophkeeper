@@ -29,3 +29,10 @@ var (
 	// неожидаемая ошибка
 	ErrUnexpectedError = errors.New("unexpected error")
 )
+
+// только для секретов
+var (
+	// secrets
+	ErrPayloadTooLarge = errors.New("payload too large")
+	ErrMetaTooLarge    = errors.New("meta too large")
+)

@@ -1,4 +1,72 @@
 basePath: /api
+definitions:
+  api.CreateSecretRequest:
+    properties:
+      meta:
+        description: необязательные метаданные
+        type: string
+      payload:
+        description: ciphertext (base64 / json / etc)
+        type: string
+      title:
+        description: произвольный заголовок секрета
+        type: string
+      type:
+        description: login_password | text | binary | bank_card | otp
+        type: string
+    type: object
+  api.CreateSecretResponse:
+    properties:
+      id:
+        type: string
+      updated_at:
+        type: string
+      version:
+        type: integer
+    type: object
+  api.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  internal_server_api.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  internal_server_api.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  internal_server_api.RefreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  internal_server_api.RefreshResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  internal_server_api.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  internal_server_api.RegisterResponse:
+    properties:
+      user_id:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -14,7 +82,150 @@ info:
   termsOfService: https://example.com/terms
   title: GophKeeper API
   version: "1.0"
-paths: {}
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates user and returns access/refresh tokens.
+      parameters:
+      - description: Login request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_server_api.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_server_api.LoginResponse'
+        "400":
+          description: Invalid input or bad JSON
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Login
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Rotates refresh token and returns new access token.
+      parameters:
+      - description: Refresh request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_server_api.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_server_api.RefreshResponse'
+        "400":
+          description: Invalid input or bad JSON
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized or token revoked
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Refresh tokens
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user account.
+      parameters:
+      - description: Register request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_server_api.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_server_api.RegisterResponse'
+        "400":
+          description: Invalid input or bad JSON
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: User already exists
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Register user
+      tags:
+      - auth
+  /secrets:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new secret for authenticated user. Server stores ciphertext
+        only.
+      parameters:
+      - description: Create secret request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateSecretRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.CreateSecretResponse'
+        "400":
+          description: Invalid input or bad JSON
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "413":
+          description: Payload too large
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create secret
+      tags:
+      - secrets
 securityDefinitions:
   BearerAuth:
     in: header
