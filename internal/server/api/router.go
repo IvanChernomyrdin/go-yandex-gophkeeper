@@ -12,6 +12,7 @@ import (
 
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/middleware"
 	"github.com/go-chi/chi/v5"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 // NewRouter создаёт и настраивает HTTP-роутер сервера.
@@ -22,20 +23,20 @@ import (
 //   - группу защищённых JWT эндпоинтов (пока без маршрутов secrets).
 func NewRouter(h *Handler) http.Handler {
 	r := chi.NewRouter()
-
 	// логирование всех запросов
 	r.Use(middleware.LoggerMiddleware())
 
+	// добавляем swagger
+	r.Get("/swagger/*", httpSwagger.WrapHandler)
+	// Публичные пути
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/register", h.Register)
 		r.Post("/login", h.Login)
 		r.Post("/refresh", h.Refresh)
 	})
-
-	// защищены jwt
+	// защищены пути
 	r.Group(func(r chi.Router) {
 		r.Use(h.Verifier.AuthMiddleware())
-
 		// тут дальше будут secrets
 		// r.Route("/secrets", func(r chi.Router) {
 		//     r.Post("/", h.CreateSecret)

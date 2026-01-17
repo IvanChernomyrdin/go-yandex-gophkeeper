@@ -101,7 +101,7 @@ func TestClient_Me_Success_UsesBearerToken(t *testing.T) {
 		require.Equal(t, "Bearer access-1", r.Header.Get("Authorization"))
 
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.MeResponse{UserID: "u1"})
+		json.NewEncoder(w).Encode(api.MeResponse{UserID: "u1"})
 	})
 
 	srv := httptest.NewTLSServer(mux)

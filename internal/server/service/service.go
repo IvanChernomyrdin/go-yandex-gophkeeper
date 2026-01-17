@@ -1,5 +1,18 @@
-// Package service содержит бизнес-логику приложения (gophkeeper).
-// Это прослойка между HTTP-обработчиками (api) и хранилищем данных (repository).
+// Package service содержит бизнес-логику приложения gophkeeper.
+//
+// Service-слой:
+//   - не знает про HTTP, JSON, роутеры
+//   - не знает про конкретную БД
+//   - работает только с интерфейсами репозиториев
+//
+// Он инкапсулирует правила:
+//   - аутентификации
+//   - авторизации
+//   - управления сессиями
+//
+// Архитектурно:
+//
+//	api --> service --> repository
 package service
 
 import (
@@ -12,43 +25,42 @@ import (
 )
 
 // Repositories — набор интерфейсов, которые сервисный слой ожидает от слоя repository.
+//
+// Используется для явного внедрения зависимостей (dependency injection)
+// при сборке сервисов приложения.
 type Repositories struct {
 	Users    UsersRepo
-	Secrets  SecretsRepo
 	Sessions SessionsRepo
 }
 
 // Services — агрегатор всех сервисов приложения.
 type Services struct {
 	Auth *AuthService
-	// Secrets *SecretsService
 }
 
 // NewServices собирает все сервисы приложения.
-// cfg нужен AuthService (параметры хеширования пароля).
+// cfg используется сервисами для:
+//   - параметров хеширования паролей
+//   - JWT-настроек
+//   - TTL токенов и сессий.
 func NewServices(repos Repositories, cfg *config.Config) *Services {
 	return &Services{
 		Auth: NewAuthService(repos.Users, repos.Sessions, cfg),
-		// Secrets: NewSecretsService(repos.Secrets),
 	}
 }
 
-// HealthRepo — минимально нужное для health-check.
-type HealthRepo interface {
-	Ping(ctx context.Context) error
-}
-
-// UsersRepo — репозиторий пользователей (нужен для auth/register/login).
+// UsersRepo — репозиторий описываеющий операции с пользователями (нужен для auth/register/login).
 type UsersRepo interface {
 	Create(ctx context.Context, email, passwordHash string) (uuid.UUID, error)
 	GetByEmail(ctx context.Context, email string) (uuid.UUID, string, error)
 }
 
-// SecretsRepo — репозиторий секретов (CRUD + version).
-type SecretsRepo interface {
-	// потом добавишь методы
-}
-
+// SessionsRepo описывает работу с refresh-сессиями.
+//
+// Используется для:
+//   - refresh access-токенов
+//   - ротации refresh-токенов
+//   - детекта повторного использования
 type SessionsRepo interface {
 	Create(ctx context.Context, userID uuid.UUID, refreshHash []byte, expiresAt time.Time) (uuid.UUID, error)
 	GetByRefreshHash(ctx context.Context, refreshHash []byte) (id uuid.UUID, userID uuid.UUID, expiresAt time.Time, revokedAt *time.Time, replacedBy *uuid.UUID, err error)

@@ -1,4 +1,4 @@
-// Проверка JWT / access токенов
+// Package middleware содержит HTTP middleware сервера.
 package middleware
 
 import (
@@ -10,30 +10,54 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// ctxKey используется как тип ключа для хранения значений в context.Context.
+// Отдельный тип предотвращает коллизии ключей между пакетами.
 type ctxKey string
 
+// userIDKey — ключ контекста, под которым хранится ID аутентифицированного пользователя.
 const userIDKey ctxKey = "user_id"
 
+// JWTVerifier инкапсулирует параметры проверки JWT access-токенов.
+//
+// Используется в HTTP middleware для:
+//   - проверки подписи токена
+//   - валидации issuer и audience
+//   - извлечения userID из claims.Subject
 type JWTVerifier struct {
-	SigningKey string
-	Issuer     string
-	Audience   string
+	SigningKey string // симметричный ключ для подписи (HS256)
+	Issuer     string // ожидаемый issuer (опционально)
+	Audience   string // ожидаемая audience (опционально)
 }
 
+// NewJWTVerifier создаёт новый JWTVerifier с заданными параметрами.
 func NewJWTVerifier(signingKey, issuer, audience string) *JWTVerifier {
 	return &JWTVerifier{SigningKey: signingKey, Issuer: issuer, Audience: audience}
 }
 
+// UserIDFromContext извлекает userID аутентифицированного пользователя из контекста.
+//
+// Возвращает:
+//   - userID
+//   - false, если пользователь не аутентифицирован
 func UserIDFromContext(ctx context.Context) (string, bool) {
 	v := ctx.Value(userIDKey)
 	s, ok := v.(string)
 	return s, ok
 }
 
+// AuthMiddleware возвращает HTTP middleware для проверки JWT access-токенов.
+//
+// Middleware:
+//   - ожидает заголовок Authorization: Bearer <token>
+//   - валидирует подпись и claims токена
+//   - извлекает userID из claims.Subject
+//   - сохраняет userID в context.Context
+//
+// В случае ошибки возвращает HTTP 401 Unauthorized.
 func (v *JWTVerifier) AuthMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			tokenStr := extractBearer(r.Header.Get("Authorization"))
+			tokenStr := ExtractBearer(r.Header.Get("Authorization"))
 			if tokenStr == "" {
 				http.Error(w, "missing bearer token", http.StatusUnauthorized)
 				return
@@ -86,7 +110,14 @@ func (v *JWTVerifier) AuthMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
-func extractBearer(h string) string {
+// ExtractBearer извлекает JWT из заголовка Authorization.
+//
+// Ожидаемый формат:
+//
+//	Authorization: Bearer <token>
+//
+// Возвращает пустую строку, если формат некорректен.
+func ExtractBearer(h string) string {
 	h = strings.TrimSpace(h)
 	if h == "" {
 		return ""

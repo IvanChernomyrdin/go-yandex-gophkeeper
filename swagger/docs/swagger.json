@@ -1,0 +1,28 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Secure password manager backend (GophKeeper).\nProvides user authentication and secret storage.",
+        "title": "GophKeeper API",
+        "termsOfService": "https://example.com/terms",
+        "contact": {
+            "name": "Ivan Chernomyrdin",
+            "url": "https://github.com/IvanChernomyrdin",
+            "email": "ivan@example.com"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api",
+    "paths": {},
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

@@ -18,44 +18,6 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
-// MockHealthRepo is a mock of HealthRepo interface.
-type MockHealthRepo struct {
-	ctrl     *gomock.Controller
-	recorder *MockHealthRepoMockRecorder
-	isgomock struct{}
-}
-
-// MockHealthRepoMockRecorder is the mock recorder for MockHealthRepo.
-type MockHealthRepoMockRecorder struct {
-	mock *MockHealthRepo
-}
-
-// NewMockHealthRepo creates a new mock instance.
-func NewMockHealthRepo(ctrl *gomock.Controller) *MockHealthRepo {
-	mock := &MockHealthRepo{ctrl: ctrl}
-	mock.recorder = &MockHealthRepoMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockHealthRepo) EXPECT() *MockHealthRepoMockRecorder {
-	return m.recorder
-}
-
-// Ping mocks base method.
-func (m *MockHealthRepo) Ping(ctx context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Ping", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Ping indicates an expected call of Ping.
-func (mr *MockHealthRepoMockRecorder) Ping(ctx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockHealthRepo)(nil).Ping), ctx)
-}
-
 // MockUsersRepo is a mock of UsersRepo interface.
 type MockUsersRepo struct {
 	ctrl     *gomock.Controller
@@ -109,30 +71,6 @@ func (m *MockUsersRepo) GetByEmail(ctx context.Context, email string) (uuid.UUID
 func (mr *MockUsersRepoMockRecorder) GetByEmail(ctx, email any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByEmail", reflect.TypeOf((*MockUsersRepo)(nil).GetByEmail), ctx, email)
-}
-
-// MockSecretsRepo is a mock of SecretsRepo interface.
-type MockSecretsRepo struct {
-	ctrl     *gomock.Controller
-	recorder *MockSecretsRepoMockRecorder
-	isgomock struct{}
-}
-
-// MockSecretsRepoMockRecorder is the mock recorder for MockSecretsRepo.
-type MockSecretsRepoMockRecorder struct {
-	mock *MockSecretsRepo
-}
-
-// NewMockSecretsRepo creates a new mock instance.
-func NewMockSecretsRepo(ctrl *gomock.Controller) *MockSecretsRepo {
-	mock := &MockSecretsRepo{ctrl: ctrl}
-	mock.recorder = &MockSecretsRepoMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockSecretsRepo) EXPECT() *MockSecretsRepoMockRecorder {
-	return m.recorder
 }
 
 // MockSessionsRepo is a mock of SessionsRepo interface.

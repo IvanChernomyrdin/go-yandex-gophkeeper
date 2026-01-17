@@ -14,6 +14,15 @@ import (
 	serr "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/errors"
 )
 
+// AuthService реализует бизнес-логику аутентификации и управления сессиями.
+//
+// Ответственность:
+//   - регистрация пользователей
+//   - аутентификация (логин)
+//   - выпуск access / refresh токенов
+//   - обновление access токенов по refresh
+//   - rotation refresh токенов
+//   - reuse detection (защита от повторного использования refresh)
 type AuthService struct {
 	users    UsersRepo
 	sessions SessionsRepo
@@ -26,6 +35,13 @@ type AuthService struct {
 	reuseDetection bool
 }
 
+// TokenPair представляет пару access / refresh токенов.
+type TokenPair struct {
+	AccessToken  string
+	RefreshToken string
+}
+
+// NewAuthService создаёт AuthService с зависимостями и настройками из конфига.
 func NewAuthService(users UsersRepo, sessions SessionsRepo, cfg *config.Config) *AuthService {
 	return &AuthService{
 		users:    users,
@@ -51,18 +67,20 @@ func NewAuthService(users UsersRepo, sessions SessionsRepo, cfg *config.Config) 
 	}
 }
 
-var emailRe = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
-
-type TokenPair struct {
-	AccessToken  string
-	RefreshToken string
-}
-
+// Register регистрирует нового пользователя.
+//
+// Валидация:
+//   - email обязателен и должен быть валидным
+//   - пароль обязателен и длиной >= 8 символов
+//
+// Возвращает:
+//   - id пользователя
+//   - ErrInvalidInput при некорректных данных или ErrAlreadyExists если email уже зарегистрирован
 func (s *AuthService) Register(ctx context.Context, email, password string) (uuid.UUID, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
 	password = strings.TrimSpace(password)
 
-	if email == "" || password == "" || !emailRe.MatchString(email) || len(password) < 8 {
+	if email == "" || password == "" || !regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`).MatchString(email) || len(password) < 8 {
 		return uuid.Nil, serr.ErrInvalidInput
 	}
 
@@ -73,13 +91,22 @@ func (s *AuthService) Register(ctx context.Context, email, password string) (uui
 	return s.users.Create(ctx, email, hash)
 }
 
+// Login аутентифицирует пользователя и выдаёт пару токенов.
+//
+// Поведение:
+//   - не раскрывает факт существования email
+//   - при успехе создаёт refresh-сессию
+//
+// Ошибки:
+//   - ErrInvalidInput
+//   - ErrInvalidCredentials
 func (s *AuthService) Login(ctx context.Context, email, password string) (TokenPair, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
 	password = strings.TrimSpace(password)
 	if email == "" || password == "" {
 		return TokenPair{}, serr.ErrInvalidInput
 	}
-
+	// получаем юзера по email
 	userID, hash, err := s.users.GetByEmail(ctx, email)
 	if err != nil {
 		// не палим существование email
@@ -88,7 +115,7 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (TokenP
 		}
 		return TokenPair{}, err
 	}
-
+	// проверяем пароль
 	ok, err := crypto.VerifyPassword(password, hash)
 	if err != nil {
 		return TokenPair{}, serr.ErrInternal
@@ -96,18 +123,19 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (TokenP
 	if !ok {
 		return TokenPair{}, serr.ErrInvalidCredentials
 	}
-
+	// создаём новый access окен
 	access, err := crypto.NewAccessToken(userID.String(), s.jwt)
 	if err != nil {
 		return TokenPair{}, serr.ErrInternal
 	}
-
+	// создаём новый refresh токен
 	refresh, err := crypto.NewRefreshToken()
 	if err != nil {
 		return TokenPair{}, serr.ErrInternal
 	}
+	// хэш для refresh токена
 	refreshHash := crypto.HashRefreshToken(refresh)
-
+	// создаём сессию
 	_, err = s.sessions.Create(ctx, userID, refreshHash, time.Now().Add(s.refreshTTL))
 	if err != nil {
 		return TokenPair{}, err
@@ -116,7 +144,15 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (TokenP
 	return TokenPair{AccessToken: access, RefreshToken: refresh}, nil
 }
 
-// Refresh обрабатывает запрос на обновление access токена по refresh токену.
+// Refresh обновляет access токен по refresh токену.
+//
+// Поддерживает:
+//   - rotation refresh токенов
+//   - reuse detection (отзыв всех сессий при атаке)
+//
+// Ошибки:
+//   - ErrInvalidInput
+//   - ErrUnauthorized
 func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (TokenPair, error) {
 	refreshToken = strings.TrimSpace(refreshToken)
 	if refreshToken == "" {
@@ -125,9 +161,9 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (TokenPa
 
 	hash := crypto.HashRefreshToken(refreshToken)
 
-	sessID, userID, expiresAt, revokedAt, replacedBy, err := s.sessions.GetByRefreshHash(ctx, hash)
+	sessID, userID, expiresAt, revokedAt, _, err := s.sessions.GetByRefreshHash(ctx, hash) // пропускаю на что поменялась сессия т.к. логировать не собираюсь
 	if err != nil {
-		return TokenPair{}, err // ErrUnauthorized/ErrInternal
+		return TokenPair{}, err
 	}
 
 	now := time.Now()
@@ -135,10 +171,12 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (TokenPa
 		return TokenPair{}, serr.ErrUnauthorized
 	}
 
-	// reuse detection: если токен уже отозван — значит кто-то пытается переиспользовать
+	// если токен уже отозван — значит кто-то пытается переиспользовать
 	if revokedAt != nil {
 		if s.reuseDetection {
-			_ = s.sessions.RevokeAllForUser(ctx, userID)
+			if err := s.sessions.RevokeAllForUser(ctx, userID); err != nil {
+				return TokenPair{}, err
+			}
 		}
 		return TokenPair{}, serr.ErrUnauthorized
 	}
@@ -169,8 +207,6 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (TokenPa
 	if err := s.sessions.RevokeAndReplace(ctx, sessID, newID); err != nil {
 		return TokenPair{}, err
 	}
-
-	_ = replacedBy // не используем, но оставляем, если захочешь логировать
 
 	return TokenPair{AccessToken: access, RefreshToken: newRefresh}, nil
 }

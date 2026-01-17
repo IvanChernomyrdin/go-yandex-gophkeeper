@@ -1,3 +1,7 @@
+// Package repository содержит реализации слоя доступа к данным (Repository layer).
+//
+// Репозитории инкапсулируют работу с БД и не содержат бизнес-логики.
+// Все ошибки приводятся к доменным ошибкам из internal/shared/errors.
 package repository
 
 import (
@@ -11,14 +15,31 @@ import (
 	serr "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/errors"
 )
 
+// SessionsRepository отвечает за хранение и управление refresh-сессиями пользователя.
+//
+// Используется для:
+//   - хранения refresh-токенов (в виде хэшей)
+//   - реализации refresh token rotation
+//   - принудительного logout со всех устройств
 type SessionsRepository struct {
 	db *sql.DB
 }
 
+// NewSessionsRepository создает новый SessionsRepository.
 func NewSessionsRepository(db *sql.DB) *SessionsRepository {
 	return &SessionsRepository{db: db}
 }
 
+// Create создает новую refresh-сессию пользователя.
+//
+// Сохраняет:
+//   - userID
+//   - хэш refresh-токена
+//   - срок действия
+//
+// Возвращает:
+//   - id созданной сессии
+//   - ErrConflict при нарушении уникальности или ErrInternal при других ошибках БД
 func (r *SessionsRepository) Create(ctx context.Context, userID uuid.UUID, refreshHash []byte, expiresAt time.Time) (uuid.UUID, error) {
 	var id uuid.UUID
 	err := r.db.QueryRowContext(ctx,
@@ -37,6 +58,19 @@ func (r *SessionsRepository) Create(ctx context.Context, userID uuid.UUID, refre
 	return id, nil
 }
 
+// GetByRefreshHash возвращает сессию по хэшу refresh-токена.
+//
+// Используется при обновлении access-токена.
+//
+// Возвращает:
+//   - id сессии
+//   - id пользователя
+//   - expiresAt
+//   - revokedAt (nil если активна)
+//   - replacedBy (nil если не была заменена)
+//
+// Ошибки:
+//   - ErrUnauthorized если сессия не найдена или ErrInternal при ошибке БД
 func (r *SessionsRepository) GetByRefreshHash(ctx context.Context, refreshHash []byte) (uuid.UUID, uuid.UUID, time.Time, *time.Time, *uuid.UUID, error) {
 	var (
 		sessID    uuid.UUID
@@ -77,6 +111,10 @@ func (r *SessionsRepository) GetByRefreshHash(ctx context.Context, refreshHash [
 	return sessID, userID, expiresAt, revokedPtr, replacedPtr, nil
 }
 
+// RevokeAndReplace отзывает старую refresh-сессию
+// и помечает ее замененной новой.
+//
+// Используется для refresh token rotation.
 func (r *SessionsRepository) RevokeAndReplace(ctx context.Context, oldID, newID uuid.UUID) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE sessions
@@ -92,6 +130,9 @@ func (r *SessionsRepository) RevokeAndReplace(ctx context.Context, oldID, newID 
 	return nil
 }
 
+// RevokeAllForUser отзывает все активные refresh-сессии пользователя.
+//
+// Используется при logout.
 func (r *SessionsRepository) RevokeAllForUser(ctx context.Context, userID uuid.UUID) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE sessions

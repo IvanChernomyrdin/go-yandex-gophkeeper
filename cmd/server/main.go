@@ -1,3 +1,23 @@
+// @title           GophKeeper API
+// @version         1.0
+// @description     Secure password manager backend (GophKeeper).
+// @description     Provides user authentication and secret storage.
+// @termsOfService  https://example.com/terms
+
+// @contact.name   Ivan Chernomyrdin
+// @contact.url    https://github.com/IvanChernomyrdin
+// @contact.email  ivan@example.com
+
+// @license.name  MIT
+// @license.url   https://opensource.org/licenses/MIT
+
+// @host      localhost:8080
+// @BasePath  /api
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+//
 // Package main содержит точку входа серверного приложения GophKeeper.
 //
 // Пакет отвечает за инициализацию и жизненный цикл HTTP(S)-сервера, а именно:
@@ -32,6 +52,8 @@ import (
 
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/config"
 	"github.com/joho/godotenv"
+
+	_ "github.com/IvanChernomyrdin/go-yandex-gophkeeper/swagger/docs"
 )
 
 func main() {

@@ -12,6 +12,10 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
+// Argon2Params описывает параметры алгоритма Argon2id.
+//
+// Параметры должны подбираться с учётом производительности сервера
+// и требований к защите от перебора.
 type Argon2Params struct {
 	Time      uint32
 	MemoryKiB uint32
@@ -20,8 +24,22 @@ type Argon2Params struct {
 	SaltLen   uint32
 }
 
-// HashPassword возвращает строку формата:
-// argon2id$v=19$m=65536,t=3,p=2$<salt_b64>$<hash_b64>
+// HashPassword хэширует пароль с использованием Argon2id.
+//
+// Возвращает строку, содержащую:
+//   - идентификатор алгоритма
+//   - версию
+//   - параметры
+//   - соль (Base64)
+//   - хэш (Base64)
+//
+// Формат:
+//
+//	argon2id$v=19$m=65536,t=3,p=2$<salt_b64>$<hash_b64>
+//
+// Ошибки:
+//   - если пароль пустой
+//   - если не удалось сгенерировать соль
 func HashPassword(password string, p Argon2Params) (string, error) {
 	if strings.TrimSpace(password) == "" {
 		return "", errors.New("empty password")
@@ -45,17 +63,23 @@ func HashPassword(password string, p Argon2Params) (string, error) {
 	return encoded, nil
 }
 
+// VerifyPassword проверяет, соответствует ли пароль ранее сохранённому хэшу.
+//
+// Функция:
+//   - извлекает параметры Argon2 из encoded-строки
+//   - повторно вычисляет хэш
+//   - сравнивает его с сохранённым в constant-time
+//
+// Возвращает:
+//   - true, если пароль корректен
+//   - false, если пароль неверен
+//
+// Ошибка возвращается только при некорректном формате хэша.
 func VerifyPassword(password, encoded string) (bool, error) {
 	parts := strings.Split(encoded, "$")
 	if len(parts) != 5 {
 		return false, errors.New("invalid hash format")
 	}
-
-	// parts[0] = argon2id
-	// parts[1] = v=19
-	// parts[2] = m=...,t=...,p=...
-	// parts[3] = salt
-	// parts[4] = hash
 
 	var memory uint32
 	var time uint32

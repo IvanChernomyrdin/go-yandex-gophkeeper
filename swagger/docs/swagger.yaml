@@ -1,0 +1,23 @@
+basePath: /api
+host: localhost:8080
+info:
+  contact:
+    email: ivan@example.com
+    name: Ivan Chernomyrdin
+    url: https://github.com/IvanChernomyrdin
+  description: |-
+    Secure password manager backend (GophKeeper).
+    Provides user authentication and secret storage.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: https://example.com/terms
+  title: GophKeeper API
+  version: "1.0"
+paths: {}
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

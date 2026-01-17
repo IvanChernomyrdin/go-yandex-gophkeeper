@@ -8,17 +8,25 @@ import (
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/logger"
 )
 
+// ResponseWriter — обёртка над http.ResponseWriter,
+// позволяющая перехватывать HTTP-статус и размер ответа.
+//
+// Используется в middleware для логирования и метрик.
 type ResponseWriter struct {
 	http.ResponseWriter
-	Status int
-	Size   int
+	Status int // HTTP статус ответа
+	Size   int // Количество записанных байт
 }
 
+// WriteHeader перехватывает установку HTTP-статуса.
+// Если статус не был установлен явно, он будет определён при Write().
 func (w *ResponseWriter) WriteHeader(Status int) {
 	w.Status = Status
 	w.ResponseWriter.WriteHeader(Status)
 }
 
+// Write записывает тело ответа и учитывает размер.
+// Если статус не был установлен ранее, используется 200 OK.
 func (w *ResponseWriter) Write(b []byte) (int, error) {
 	if w.Status == 0 {
 		w.Status = http.StatusOK
@@ -28,6 +36,15 @@ func (w *ResponseWriter) Write(b []byte) (int, error) {
 	return Size, err
 }
 
+// LoggerMiddleware возвращает HTTP middleware,
+// логирующий входящие HTTP-запросы.
+//
+// Логируются:
+//   - HTTP метод
+//   - URI
+//   - статус ответа
+//   - размер ответа
+//   - время обработки запроса (в миллисекундах)
 func LoggerMiddleware() func(http.Handler) http.Handler {
 	loggerHTTP := logger.NewHTTPLogger()
 
