@@ -35,4 +35,5 @@ var (
 	// secrets
 	ErrPayloadTooLarge = errors.New("payload too large")
 	ErrMetaTooLarge    = errors.New("meta too large")
+	ErrUserIDEmpty     = errors.New("user id cannot be empty")
 )

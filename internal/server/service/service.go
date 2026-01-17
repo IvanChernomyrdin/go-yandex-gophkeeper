@@ -22,6 +22,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/config"
+	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service/models"
 )
 
 // Repositories — набор интерфейсов, которые сервисный слой ожидает от слоя repository.
@@ -83,12 +84,6 @@ const (
 )
 
 type SecretsRepo interface {
-	Create(
-		ctx context.Context,
-		userID uuid.UUID,
-		typ SecretType,
-		title string,
-		payload string,
-		meta *string,
-	) (id uuid.UUID, version int, updatedAt time.Time, err error)
+	Create(ctx context.Context, userID uuid.UUID, typ SecretType, title string, payload string, meta *string) (id uuid.UUID, version int, updatedAt time.Time, err error)
+	ListSecrets(ctx context.Context, userID uuid.UUID) ([]models.GetAllSecretsResponse, error)
 }

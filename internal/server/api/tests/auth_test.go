@@ -23,7 +23,7 @@ import (
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/logger"
 )
 
-func newTestHandler(t *testing.T) (*api.Handler, *svcmocks.MockUsersRepo, *svcmocks.MockSessionsRepo) {
+func NewTestHandler(t *testing.T) (*api.Handler, *svcmocks.MockUsersRepo, *svcmocks.MockSessionsRepo) {
 	t.Helper()
 
 	ctrl := gomock.NewController(t)
@@ -71,7 +71,7 @@ func newTestHandler(t *testing.T) (*api.Handler, *svcmocks.MockUsersRepo, *svcmo
 }
 
 func TestHandler_Register_BadJSON(t *testing.T) {
-	h, _, _ := newTestHandler(t)
+	h, _, _ := NewTestHandler(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBufferString("{bad json"))
 	rec := httptest.NewRecorder()
@@ -87,7 +87,7 @@ func TestHandler_Register_BadJSON(t *testing.T) {
 }
 
 func TestHandler_Register_Success(t *testing.T) {
-	h, users, _ := newTestHandler(t)
+	h, users, _ := NewTestHandler(t)
 
 	email := "test@example.com"
 	password := "StrongPass123"
@@ -130,7 +130,7 @@ func TestHandler_Register_Success(t *testing.T) {
 }
 
 func TestHandler_Register_AlreadyExists(t *testing.T) {
-	h, users, _ := newTestHandler(t)
+	h, users, _ := NewTestHandler(t)
 
 	email := "test@example.com"
 	password := "StrongPass123"
@@ -151,7 +151,7 @@ func TestHandler_Register_AlreadyExists(t *testing.T) {
 }
 
 func TestHandler_Login_BadJSON(t *testing.T) {
-	h, _, _ := newTestHandler(t)
+	h, _, _ := NewTestHandler(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString("{bad json"))
 	rec := httptest.NewRecorder()
@@ -164,7 +164,7 @@ func TestHandler_Login_BadJSON(t *testing.T) {
 }
 
 func TestHandler_Login_Success(t *testing.T) {
-	h, users, sessions := newTestHandler(t)
+	h, users, sessions := NewTestHandler(t)
 
 	email := "test@example.com"
 	password := "StrongPass123"
@@ -213,7 +213,7 @@ func TestHandler_Login_Success(t *testing.T) {
 }
 
 func TestHandler_Login_InvalidCredentials(t *testing.T) {
-	h, users, _ := newTestHandler(t)
+	h, users, _ := NewTestHandler(t)
 
 	email := "test@example.com"
 	password := "WrongPass123"
@@ -235,7 +235,7 @@ func TestHandler_Login_InvalidCredentials(t *testing.T) {
 }
 
 func TestHandler_Refresh_BadJSON(t *testing.T) {
-	h, _, _ := newTestHandler(t)
+	h, _, _ := NewTestHandler(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewBufferString("{bad json"))
 	rec := httptest.NewRecorder()
@@ -248,7 +248,7 @@ func TestHandler_Refresh_BadJSON(t *testing.T) {
 }
 
 func TestHandler_Refresh_Unauthorized_Expired(t *testing.T) {
-	h, _, sessions := newTestHandler(t)
+	h, _, sessions := NewTestHandler(t)
 
 	refreshToken := "some-refresh-token"
 
@@ -277,7 +277,7 @@ func TestHandler_Refresh_Unauthorized_Expired(t *testing.T) {
 }
 
 func TestHandler_Refresh_Success_RotateEnabled(t *testing.T) {
-	h, _, sessions := newTestHandler(t)
+	h, _, sessions := NewTestHandler(t)
 
 	refreshToken := "some-refresh-token"
 	userID := uuid.New()

@@ -41,7 +41,7 @@ func NewRouter(h *Handler) http.Handler {
 		// CRUD запросы для секретов
 		r.Route("/secrets", func(r chi.Router) {
 			r.Post("/", h.CreateSecret) // Создание секрета
-			//     r.Get("/", h.ListSecrets)
+			r.Get("/", h.ListSecrets)   // Получение все секретов
 			//     r.Get("/{id}", h.GetSecret)
 			//     r.Put("/{id}", h.UpdateSecret)
 			//     r.Delete("/{id}", h.DeleteSecret)

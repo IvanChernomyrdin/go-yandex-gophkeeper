@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/config"
+	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service/models"
 	serr "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/errors"
 	"github.com/google/uuid"
 )
@@ -52,15 +53,7 @@ func (s *SecretsService) validateType(t SecretType) error {
 //   - ErrInvalidInput — невалидные данные;
 //   - ErrPayloadTooLarge — превышен лимит payload;
 //   - ErrInternal — ошибка хранилища.
-func (s *SecretsService) Create(
-	ctx context.Context,
-	userID uuid.UUID,
-	typ string,
-	title string,
-	payload string,
-	meta *string,
-) (uuid.UUID, int, time.Time, error) {
-
+func (s *SecretsService) Create(ctx context.Context, userID uuid.UUID, typ string, title string, payload string, meta *string) (uuid.UUID, int, time.Time, error) {
 	if title == "" || payload == "" {
 		return uuid.Nil, 0, time.Time{}, serr.ErrInvalidInput
 	}
@@ -79,4 +72,26 @@ func (s *SecretsService) Create(
 	}
 
 	return s.repo.Create(ctx, userID, st, title, payload, meta)
+}
+
+// ListSecrets возвращает список всех секретов пользователя.
+//
+// Метод проверяет корректность userID и делегирует получение данных
+// в слой репозитория. Порядок секретов определяется реализацией
+// репозитория (сортировка по updated_at DESC).
+//
+// Параметры:
+//   - ctx — контекст запроса (для отмены, дедлайнов и трассировки)
+//   - userID — идентификатор пользователя
+//
+// Возвращает:
+//   - срез моделей GetAllSecretsResponse при успешном выполнении
+//   - serr.ErrUserIDEmpty, если userID равен uuid.Nil
+//   - ошибку, полученную из слоя репозитория
+func (s *SecretsService) ListSecrets(ctx context.Context, userID uuid.UUID) ([]models.GetAllSecretsResponse, error) {
+	if userID == uuid.Nil {
+		return nil, serr.ErrUserIDEmpty
+	}
+
+	return s.repo.ListSecrets(ctx, userID)
 }

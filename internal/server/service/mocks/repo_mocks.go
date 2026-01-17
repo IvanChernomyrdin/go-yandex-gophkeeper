@@ -15,6 +15,7 @@ import (
 	time "time"
 
 	service "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service"
+	models "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service/models"
 	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -199,4 +200,19 @@ func (m *MockSecretsRepo) Create(ctx context.Context, userID uuid.UUID, typ serv
 func (mr *MockSecretsRepoMockRecorder) Create(ctx, userID, typ, title, payload, meta any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockSecretsRepo)(nil).Create), ctx, userID, typ, title, payload, meta)
+}
+
+// ListSecrets mocks base method.
+func (m *MockSecretsRepo) ListSecrets(ctx context.Context, userID uuid.UUID) ([]models.GetAllSecretsResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListSecrets", ctx, userID)
+	ret0, _ := ret[0].([]models.GetAllSecretsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListSecrets indicates an expected call of ListSecrets.
+func (mr *MockSecretsRepoMockRecorder) ListSecrets(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSecrets", reflect.TypeOf((*MockSecretsRepo)(nil).ListSecrets), ctx, userID)
 }

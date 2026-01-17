@@ -120,3 +120,50 @@ func (h *Handler) CreateSecret(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt: updatedAt,
 	})
 }
+
+// ListSecrets возвращает все секреты текущего пользователя.
+//
+// Пользователь определяется по JWT-токену (middleware).
+// Сервер не расшифровывает payload и возвращает ciphertext как есть.
+//
+// Возможные ошибки:
+//   - 401 Unauthorized: отсутствует или некорректный JWT;
+//   - 500 Internal Server Error: ошибка доступа к хранилищу.
+//
+// Ответ всегда возвращается в формате JSON.
+
+// ListSecrets godoc
+// @Summary      List secrets
+// @Description  Returns all secrets belonging to the authenticated user.
+// @Description  Payload is returned as ciphertext (E2E encryption).
+// @Tags         secrets
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {array} models.GetAllSecretsResponse
+// @Failure      401 {object} api.ErrorResponse "Unauthorized"
+// @Failure      500 {object} api.ErrorResponse "Internal server error"
+// @Router       /secrets [get]
+func (h *Handler) ListSecrets(w http.ResponseWriter, r *http.Request) {
+	// Получаем userID из JWT context
+	userIDStr, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, serr.ErrUnauthorized)
+		return
+	}
+	// переводим в uuid.UUID
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		WriteError(w, http.StatusUnauthorized, serr.ErrUnauthorized)
+		return
+	}
+	// вызываем сервис
+	data, err := h.Svc.Secrets.ListSecrets(r.Context(), userID)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, serr.ErrInternal)
+		return
+	}
+	w.Header().Set(ContentType, JsonContentType)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(data)
+}
