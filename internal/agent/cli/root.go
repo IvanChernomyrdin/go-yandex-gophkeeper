@@ -152,6 +152,13 @@ Delete <id>:
 	cmd.AddCommand(NewRefreshCmd(app))
 	cmd.AddCommand(NewVersionCmd(buildVersion, buildDate))
 
+	// cmd.AddCommand(SecretSync(app))
+	// cmd.AddCommand(SecretGetALL(app))
+	// cmd.AddCommand(SecretGetForID(app))
+	// cmd.AddCommand(SecretCreate(app))
+	// cmd.AddCommand(SecretUpdate(app))
+	// cmd.AddCommand(SecretDelete(app))
+
 	return cmd
 }
 
