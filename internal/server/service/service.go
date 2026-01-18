@@ -85,5 +85,6 @@ const (
 
 type SecretsRepo interface {
 	Create(ctx context.Context, userID uuid.UUID, typ SecretType, title string, payload string, meta *string) (id uuid.UUID, version int, updatedAt time.Time, err error)
-	ListSecrets(ctx context.Context, userID uuid.UUID) ([]models.GetAllSecretsResponse, error)
+	ListSecrets(ctx context.Context, userID uuid.UUID) ([]models.SecretResponse, error)
+	UpdateSecret(ctx context.Context, userID uuid.UUID, secretID uuid.UUID, data models.UpdateSecretRequest) error
 }

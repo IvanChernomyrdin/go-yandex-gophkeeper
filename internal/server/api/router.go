@@ -38,12 +38,12 @@ func NewRouter(h *Handler) http.Handler {
 	r.Group(func(r chi.Router) {
 		// проверка access токена
 		r.Use(h.Verifier.AuthMiddleware())
-		// CRUD запросы для секретов
+		// запросы для секретов
 		r.Route("/secrets", func(r chi.Router) {
 			r.Post("/", h.CreateSecret) // Создание секрета
-			r.Get("/", h.ListSecrets)   // Получение все секретов
-			//     r.Get("/{id}", h.GetSecret)
-			//     r.Put("/{id}", h.UpdateSecret)
+			r.Get("/", h.ListSecrets)   // Получение все секретов // на клиенте делается каманда sync
+			// r.Get("/{id}", h.GetSecret) // реализуется на клиенте
+			r.Put("/{id}", h.UpdateSecret)
 			//     r.Delete("/{id}", h.DeleteSecret)
 		})
 	})

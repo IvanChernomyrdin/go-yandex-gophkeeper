@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 // ctxKey используется как тип ключа для хранения значений в context.Context.
@@ -39,9 +40,9 @@ func NewJWTVerifier(signingKey, issuer, audience string) *JWTVerifier {
 // Возвращает:
 //   - userID
 //   - false, если пользователь не аутентифицирован
-func UserIDFromContext(ctx context.Context) (string, bool) {
+func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
 	v := ctx.Value(userIDKey)
-	s, ok := v.(string)
+	s, ok := v.(uuid.UUID)
 	return s, ok
 }
 
@@ -98,9 +99,15 @@ func (v *JWTVerifier) AuthMiddleware() func(http.Handler) http.Handler {
 				}
 			}
 
-			userID := strings.TrimSpace(claims.Subject)
-			if userID == "" {
+			userIDStr := strings.TrimSpace(claims.Subject)
+			if userIDStr == "" {
 				http.Error(w, "invalid token subject", http.StatusUnauthorized)
+				return
+			}
+
+			userID, err := uuid.Parse(userIDStr)
+			if err != nil {
+				http.Error(w, "invalid user id", http.StatusUnauthorized)
 				return
 			}
 
@@ -136,6 +143,6 @@ func ExtractBearer(h string) string {
 //
 // userID должен быть строковым представлением UUID пользователя.
 // Значение извлекается с помощью функции UserIDFromContext.
-func ContextWithUserID(ctx context.Context, userID string) context.Context {
+func ContextWithUserID(ctx context.Context, userID uuid.UUID) context.Context {
 	return context.WithValue(ctx, userIDKey, userID)
 }

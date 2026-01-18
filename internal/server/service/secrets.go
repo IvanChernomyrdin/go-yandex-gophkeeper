@@ -85,13 +85,34 @@ func (s *SecretsService) Create(ctx context.Context, userID uuid.UUID, typ strin
 //   - userID — идентификатор пользователя
 //
 // Возвращает:
-//   - срез моделей GetAllSecretsResponse при успешном выполнении
+//   - срез моделей models.SecretResponse при успешном выполнении
 //   - serr.ErrUserIDEmpty, если userID равен uuid.Nil
 //   - ошибку, полученную из слоя репозитория
-func (s *SecretsService) ListSecrets(ctx context.Context, userID uuid.UUID) ([]models.GetAllSecretsResponse, error) {
+func (s *SecretsService) ListSecrets(ctx context.Context, userID uuid.UUID) ([]models.SecretResponse, error) {
+
 	if userID == uuid.Nil {
 		return nil, serr.ErrUserIDEmpty
 	}
 
 	return s.repo.ListSecrets(ctx, userID)
+}
+
+// UpdateSecret обновляет секрет пользователя.
+//
+// Секрет определяется по userID и secretID.
+// Метод использует optimistic locking (version) для предотвращения
+// потери данных при конкурентных обновлениях.
+//
+// Метод не возвращает тело ответа — только статус выполнения операции.
+//
+// Возможные ошибки:
+//   - ErrUserIDEmpty — userID не передан
+//   - ErrNotFound    — секрет не найден
+//   - ErrConflict    — конфликт версий
+//   - ErrInternal    — внутренняя ошибка
+func (s *SecretsService) UpdateSecret(ctx context.Context, userID uuid.UUID, secretID uuid.UUID, data models.UpdateSecretRequest) error {
+	if userID == uuid.Nil {
+		return serr.ErrUserIDEmpty
+	}
+	return s.repo.UpdateSecret(ctx, userID, secretID, data)
 }

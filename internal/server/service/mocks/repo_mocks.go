@@ -203,10 +203,10 @@ func (mr *MockSecretsRepoMockRecorder) Create(ctx, userID, typ, title, payload, 
 }
 
 // ListSecrets mocks base method.
-func (m *MockSecretsRepo) ListSecrets(ctx context.Context, userID uuid.UUID) ([]models.GetAllSecretsResponse, error) {
+func (m *MockSecretsRepo) ListSecrets(ctx context.Context, userID uuid.UUID) ([]models.SecretResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListSecrets", ctx, userID)
-	ret0, _ := ret[0].([]models.GetAllSecretsResponse)
+	ret0, _ := ret[0].([]models.SecretResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -215,4 +215,18 @@ func (m *MockSecretsRepo) ListSecrets(ctx context.Context, userID uuid.UUID) ([]
 func (mr *MockSecretsRepoMockRecorder) ListSecrets(ctx, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSecrets", reflect.TypeOf((*MockSecretsRepo)(nil).ListSecrets), ctx, userID)
+}
+
+// UpdateSecret mocks base method.
+func (m *MockSecretsRepo) UpdateSecret(ctx context.Context, userID, secretID uuid.UUID, data models.UpdateSecretRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateSecret", ctx, userID, secretID, data)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateSecret indicates an expected call of UpdateSecret.
+func (mr *MockSecretsRepoMockRecorder) UpdateSecret(ctx, userID, secretID, data any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSecret", reflect.TypeOf((*MockSecretsRepo)(nil).UpdateSecret), ctx, userID, secretID, data)
 }

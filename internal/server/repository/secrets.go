@@ -74,9 +74,9 @@ func (r *SecretsRepository) Create(
 //   - отсортированы по updated_at в порядке убывания (сначала последние)
 //
 // Возвращает:
-//   - []GetAllSecretsResponse — список секретов (может быть пустым)
+//   - []models.SecretResponse — список секретов (может быть пустым)
 //   - ErrInternal — при любой ошибке работы с БД
-func (r *SecretsRepository) ListSecrets(ctx context.Context, userID uuid.UUID) ([]models.GetAllSecretsResponse, error) {
+func (r *SecretsRepository) ListSecrets(ctx context.Context, userID uuid.UUID) ([]models.SecretResponse, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT type, title, payload, meta, version, updated_at, created_at
 		FROM secrets
@@ -88,10 +88,10 @@ func (r *SecretsRepository) ListSecrets(ctx context.Context, userID uuid.UUID) (
 	}
 	defer rows.Close()
 
-	var result []models.GetAllSecretsResponse
+	var result []models.SecretResponse
 
 	for rows.Next() {
-		var res models.GetAllSecretsResponse
+		var res models.SecretResponse
 		if err := rows.Scan(&res.Type, &res.Title, &res.Payload, &res.Meta, &res.Version, &res.UpdatedAt, &res.CreatedAt); err != nil {
 			return nil, serr.ErrInternal
 		}
@@ -102,4 +102,79 @@ func (r *SecretsRepository) ListSecrets(ctx context.Context, userID uuid.UUID) (
 	}
 
 	return result, nil
+}
+
+// UpdateSecret обновляет существующий секрет пользователя.
+//
+// Обновление выполняется по паре (userID, secretID) с использованием
+// optimistic locking по полю version.
+//
+// Алгоритм работы:
+//  1. Выполняется UPDATE с проверкой текущей версии секрета.
+//  2. Если обновление прошло успешно — метод возвращает nil.
+//  3. Если ни одна строка не была обновлена:
+//     - проверяется существование секрета;
+//     - если секрет не найден — возвращается ErrNotFound;
+//     - если секрет существует, но версия отличается — ErrConflict.
+//
+// Метод НЕ возвращает обновлённые данные секрета,
+// только сигнализирует об успехе или ошибке.
+//
+// Возможные ошибки:
+//   - ErrNotFound  — секрет не существует или не принадлежит пользователю
+//   - ErrConflict  — версия секрета устарела (обнаружен конфликт изменений)
+//   - ErrInternal  — внутренняя ошибка базы данных
+func (r *SecretsRepository) UpdateSecret(ctx context.Context, userID uuid.UUID, secretID uuid.UUID, data models.UpdateSecretRequest) error {
+	res, err := r.db.ExecContext(ctx, `
+		UPDATE secrets
+		SET
+			type = $1,
+			title = $2,
+			payload = $3,
+			meta = $4,
+			version = version + 1,
+			updated_at = now()
+		WHERE user_id = $5
+		  AND id = $6
+		  AND version = $7
+	`,
+		data.Type,
+		data.Title,
+		data.Payload,
+		data.Meta,
+		userID,
+		secretID,
+		data.Version,
+	)
+	if err != nil {
+		return serr.ErrInternal
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return serr.ErrInternal
+	}
+
+	if affected > 0 {
+		return nil
+	}
+
+	// выясняем: конфликт или not found
+	var exists bool
+	err = r.db.QueryRowContext(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM secrets
+			WHERE user_id = $1 AND id = $2
+		)
+	`, userID, secretID).Scan(&exists)
+
+	if err != nil {
+		return serr.ErrInternal
+	}
+
+	if !exists {
+		return serr.ErrNotFound
+	}
+
+	return serr.ErrConflict
 }

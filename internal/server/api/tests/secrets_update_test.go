@@ -3,35 +3,38 @@ package tests
 import (
 	"context"
 	"testing"
-	"time"
-
-	"github.com/google/uuid"
-	"go.uber.org/mock/gomock"
 
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/config"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service"
 	repoMocks "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service/mocks"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service/models"
 	serr "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/errors"
+	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 )
 
-// UseID пустой
-func TestSecretsService_ListSecrets_UserIDEmpty(t *testing.T) {
+// userID пустой
+func TestSecretsService_UpdateSecret_UserIDEmpty(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	repo := repoMocks.NewMockSecretsRepo(ctrl)
 	svc := service.NewSecretsService(repo, config.SecretsConfig{})
 
-	_, err := svc.ListSecrets(context.Background(), uuid.Nil)
+	err := svc.UpdateSecret(
+		context.Background(),
+		uuid.Nil,
+		uuid.New(),
+		models.UpdateSecretRequest{},
+	)
 
 	if err != serr.ErrUserIDEmpty {
 		t.Fatalf("expected %v, got %v", serr.ErrUserIDEmpty, err)
 	}
 }
 
-// Ошибка сервера
-func TestSecretsService_ListSecrets_RepoError(t *testing.T) {
+// Репозиторий вернул ошибку
+func TestSecretsService_UpdateSecret_RepoError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -39,20 +42,33 @@ func TestSecretsService_ListSecrets_RepoError(t *testing.T) {
 	svc := service.NewSecretsService(repo, config.SecretsConfig{})
 
 	userID := uuid.New()
+	secretID := uuid.New()
+
+	req := models.UpdateSecretRequest{
+		Type:    "text",
+		Title:   "note",
+		Payload: []byte("cipher"),
+		Version: 1,
+	}
 
 	repo.EXPECT().
-		ListSecrets(gomock.Any(), userID).
-		Return(nil, serr.ErrInternal)
+		UpdateSecret(gomock.Any(), userID, secretID, req).
+		Return(serr.ErrConflict)
 
-	_, err := svc.ListSecrets(context.Background(), userID)
+	err := svc.UpdateSecret(
+		context.Background(),
+		userID,
+		secretID,
+		req,
+	)
 
-	if err != serr.ErrInternal {
-		t.Fatalf("expected %v, got %v", serr.ErrInternal, err)
+	if err != serr.ErrConflict {
+		t.Fatalf("expected %v, got %v", serr.ErrConflict, err)
 	}
 }
 
 // Успех
-func TestSecretsService_ListSecrets_Success(t *testing.T) {
+func TestSecretsService_UpdateSecret_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -60,37 +76,29 @@ func TestSecretsService_ListSecrets_Success(t *testing.T) {
 	svc := service.NewSecretsService(repo, config.SecretsConfig{})
 
 	userID := uuid.New()
-
-	updatedAt := time.Now()
-	createdAt := updatedAt.Add(-time.Hour)
+	secretID := uuid.New()
 	meta := "meta"
 
-	expected := []models.SecretResponse{
-		{
-			Type:      "text",
-			Title:     "note",
-			Payload:   []byte("cipher"),
-			Meta:      &meta,
-			Version:   1,
-			UpdatedAt: updatedAt,
-			CreatedAt: createdAt,
-		},
+	req := models.UpdateSecretRequest{
+		Type:    "text",
+		Title:   "note",
+		Payload: []byte("cipher"),
+		Meta:    &meta,
+		Version: 1,
 	}
 
 	repo.EXPECT().
-		ListSecrets(gomock.Any(), userID).
-		Return(expected, nil)
+		UpdateSecret(gomock.Any(), userID, secretID, req).
+		Return(nil)
 
-	result, err := svc.ListSecrets(context.Background(), userID)
+	err := svc.UpdateSecret(
+		context.Background(),
+		userID,
+		secretID,
+		req,
+	)
+
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(result) != 1 {
-		t.Fatalf("expected 1 secret, got %d", len(result))
-	}
-
-	if result[0].Title != "note" {
-		t.Fatalf("unexpected title: %q", result[0].Title)
 	}
 }

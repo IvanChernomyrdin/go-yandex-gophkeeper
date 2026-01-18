@@ -6,10 +6,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/middleware"
+	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service/models"
 	serr "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/errors"
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 // CreateSecretRequest тело запроса создания секрета.
@@ -71,15 +72,8 @@ func (h *Handler) CreateSecret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Получаем userID из JWT context
-	userIDStr, ok := middleware.UserIDFromContext(r.Context())
+	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok {
-		WriteError(w, http.StatusUnauthorized, serr.ErrUnauthorized)
-		return
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
 		WriteError(w, http.StatusUnauthorized, serr.ErrUnauthorized)
 		return
 	}
@@ -145,25 +139,101 @@ func (h *Handler) CreateSecret(w http.ResponseWriter, r *http.Request) {
 // @Failure      500 {object} api.ErrorResponse "Internal server error"
 // @Router       /secrets [get]
 func (h *Handler) ListSecrets(w http.ResponseWriter, r *http.Request) {
-	// Получаем userID из JWT context
-	userIDStr, ok := middleware.UserIDFromContext(r.Context())
+	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok {
 		WriteError(w, http.StatusUnauthorized, serr.ErrUnauthorized)
 		return
 	}
-	// переводим в uuid.UUID
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		WriteError(w, http.StatusUnauthorized, serr.ErrUnauthorized)
-		return
-	}
 	// вызываем сервис
-	data, err := h.Svc.Secrets.ListSecrets(r.Context(), userID)
+	secret, err := h.Svc.Secrets.ListSecrets(r.Context(), userID)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, serr.ErrInternal)
 		return
 	}
+
+	data := models.GetAllSecretsResponse{
+		Secrets: secret,
+	}
+
 	w.Header().Set(ContentType, JsonContentType)
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(data)
+}
+
+// UpdateSecret обновляет существующий секрет пользователя.
+//
+// Идентификатор секрета передаётся в URL-параметре `{id}`.
+// Пользователь определяется по JWT-токену (middleware).
+//
+// Обновление выполняется с использованием optimistic locking:
+// сервер проверяет, что версия секрета и время последнего обновления
+// совпадают с текущими значениями в базе данных.
+// Это позволяет обнаружить изменения, выполненные с другого устройства.
+//
+// Если секрет был удалён или не существует, возвращается ошибка Not Found.
+// Если версия или updated_at не совпадают — возвращается ошибка конфликта.
+//
+// UpdateSecret godoc
+// @Summary      Update secret
+// @Description  Updates an existing secret belonging to the authenticated user.
+// @Description  Uses optimistic locking (version / updated_at check).
+// @Description  If the secret was modified or deleted on another device,
+// @Description  a conflict or not found error is returned.
+// @Tags         secrets
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id      path      string  true  "Secret ID (UUID)"
+// @Param        body    body      api.UpdateSecretRequest  true  "Updated secret data"
+// @Success      200 {object} api.UpdateSecretResponse
+// @Failure      400 {object} api.ErrorResponse "Bad request"
+// @Failure      401 {object} api.ErrorResponse "Unauthorized"
+// @Failure      404 {object} api.ErrorResponse "Not found"
+// @Failure      409 {object} api.ErrorResponse "Conflict"
+// @Failure      500 {object} api.ErrorResponse "Internal server error"
+// @Router       /secrets/{id} [put]
+func (h *Handler) UpdateSecret(w http.ResponseWriter, r *http.Request) {
+	secretIDStr := chi.URLParam(r, "id")
+	secretID, err := uuid.Parse(secretIDStr)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, serr.ErrInvalidInput)
+		return
+	}
+
+	var req models.UpdateSecretRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteError(w, http.StatusBadRequest, serr.ErrBadJSON)
+		return
+	}
+
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, serr.ErrUnauthorized)
+		return
+	}
+
+	err = h.Svc.Secrets.UpdateSecret(
+		r.Context(),
+		userID,
+		secretID,
+		req,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, serr.ErrConflict):
+			WriteError(w, http.StatusConflict, err)
+		case errors.Is(err, serr.ErrNotFound):
+			WriteError(w, http.StatusNotFound, err)
+		default:
+			h.Log.Logger.Sugar().Errorw(
+				"update secret failed",
+				"error", err,
+				"user_id", userID.String(),
+				"secret_id", secretID.String(),
+			)
+			WriteError(w, http.StatusInternalServerError, serr.ErrInternal)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

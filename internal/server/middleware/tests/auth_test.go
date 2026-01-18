@@ -8,6 +8,7 @@ import (
 
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/middleware"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 // Вспомогательная функция для JWT
@@ -34,10 +35,12 @@ func TestAuthMiddleware_OK(t *testing.T) {
 	key := "secret"
 	v := middleware.NewJWTVerifier(key, "issuer", "aud")
 
+	userID := uuid.New()
+
 	token := makeToken(
 		t,
 		key,
-		"user-123",
+		userID.String(),
 		"issuer",
 		"aud",
 		time.Now().Add(time.Minute),
@@ -48,7 +51,11 @@ func TestAuthMiddleware_OK(t *testing.T) {
 		called = true
 
 		uid, ok := middleware.UserIDFromContext(r.Context())
-		if !ok || uid != "user-123" {
+		if !ok {
+			t.Fatal("user id not found in context")
+		}
+
+		if uid != userID {
 			t.Fatalf("unexpected user id: %v", uid)
 		}
 

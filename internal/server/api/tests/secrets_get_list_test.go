@@ -58,7 +58,7 @@ func TestHandler_ListSecrets_InternalError(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/secrets", nil)
 	req = req.WithContext(
-		middleware.ContextWithUserID(req.Context(), userID.String()),
+		middleware.ContextWithUserID(req.Context(), userID),
 	)
 
 	rec := httptest.NewRecorder()
@@ -85,7 +85,7 @@ func TestHandler_ListSecrets_Success(t *testing.T) {
 	createdAt, _ := time.Parse(time.RFC3339, "2025-01-01T09:00:00Z")
 	meta := "meta"
 
-	expected := []models.GetAllSecretsResponse{
+	repoResult := []models.SecretResponse{
 		{
 			Type:      "text",
 			Title:     "note",
@@ -99,11 +99,11 @@ func TestHandler_ListSecrets_Success(t *testing.T) {
 
 	repo.EXPECT().
 		ListSecrets(gomock.Any(), userID).
-		Return(expected, nil)
+		Return(repoResult, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/secrets", nil)
 	req = req.WithContext(
-		middleware.ContextWithUserID(req.Context(), userID.String()),
+		middleware.ContextWithUserID(req.Context(), userID),
 	)
 
 	rec := httptest.NewRecorder()
@@ -113,16 +113,16 @@ func TestHandler_ListSecrets_Success(t *testing.T) {
 		t.Fatalf("expected %d, got %d", http.StatusOK, rec.Code)
 	}
 
-	var resp []models.GetAllSecretsResponse
+	var resp models.GetAllSecretsResponse
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
 
-	if len(resp) != 1 {
-		t.Fatalf("expected 1 secret, got %d", len(resp))
+	if len(resp.Secrets) != 1 {
+		t.Fatalf("expected 1 secret, got %d", len(resp.Secrets))
 	}
 
-	if resp[0].Title != "note" {
-		t.Fatalf("unexpected title %q", resp[0].Title)
+	if resp.Secrets[0].Title != "note" {
+		t.Fatalf("unexpected title %q", resp.Secrets[0].Title)
 	}
 }
