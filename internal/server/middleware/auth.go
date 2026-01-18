@@ -137,10 +137,7 @@ func ExtractBearer(h string) string {
 }
 
 // ContextWithUserID возвращает новый context.Context с сохранённым идентификатором пользователя.
-//
 // Функция используется middleware аутентификации для передачи userID
-// по цепочке вызовов (handlers → services → repositories).
-//
 // userID должен быть строковым представлением UUID пользователя.
 // Значение извлекается с помощью функции UserIDFromContext.
 func ContextWithUserID(ctx context.Context, userID uuid.UUID) context.Context {

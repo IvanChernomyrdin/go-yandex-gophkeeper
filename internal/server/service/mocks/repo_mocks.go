@@ -202,6 +202,20 @@ func (mr *MockSecretsRepoMockRecorder) Create(ctx, userID, typ, title, payload, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockSecretsRepo)(nil).Create), ctx, userID, typ, title, payload, meta)
 }
 
+// DeleteSecret mocks base method.
+func (m *MockSecretsRepo) DeleteSecret(ctx context.Context, userID, secretID uuid.UUID, version int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteSecret", ctx, userID, secretID, version)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteSecret indicates an expected call of DeleteSecret.
+func (mr *MockSecretsRepoMockRecorder) DeleteSecret(ctx, userID, secretID, version any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSecret", reflect.TypeOf((*MockSecretsRepo)(nil).DeleteSecret), ctx, userID, secretID, version)
+}
+
 // ListSecrets mocks base method.
 func (m *MockSecretsRepo) ListSecrets(ctx context.Context, userID uuid.UUID) ([]models.SecretResponse, error) {
 	m.ctrl.T.Helper()

@@ -41,10 +41,10 @@ func NewRouter(h *Handler) http.Handler {
 		// запросы для секретов
 		r.Route("/secrets", func(r chi.Router) {
 			r.Post("/", h.CreateSecret) // Создание секрета
-			r.Get("/", h.ListSecrets)   // Получение все секретов // на клиенте делается каманда sync
+			r.Get("/", h.ListSecrets)   // Получение все секретов на клиенте делается каманда sync
 			// r.Get("/{id}", h.GetSecret) // реализуется на клиенте
-			r.Put("/{id}", h.UpdateSecret)
-			//     r.Delete("/{id}", h.DeleteSecret)
+			r.Put("/{id}", h.UpdateSecret)    // обновляем, передаём id в параметрах и данные секрета в теле
+			r.Delete("/{id}", h.DeleteSecret) // удаляем секрет по id и по ?version
 		})
 	})
 

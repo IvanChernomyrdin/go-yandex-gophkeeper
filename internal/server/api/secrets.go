@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/middleware"
@@ -235,5 +236,96 @@ func (h *Handler) UpdateSecret(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// DeleteSecret удаляет секрет пользователя с optimistic locking по версии.
+//
+// Параметры:
+//   - ctx     — контекст запроса
+//   - userID  — идентификатор пользователя (обязателен)
+//   - secretID — идентификатор секрета
+//   - version — текущая версия секрета
+//
+// Ошибки:
+//   - ErrUserIDEmpty — если userID == uuid.Nil
+//   - ErrNotFound    — если секрет не найден
+//   - ErrConflict    — если версия не совпадает
+//   - ErrInternal    — внутренняя ошибка
+//
+// Успех:
+//   - nil — секрет успешно удалён
+//
+// # DeleteSecret godoc
+//
+// @Summary      Удалить секрет
+// @Description  Удаляет секрет пользователя с проверкой версии (optimistic locking).
+// @Description  Если версия не совпадает — возвращается конфликт.
+// @Tags         secrets
+// @Accept       json
+// @Produce      json
+//
+// @Param        id       path     string true  "ID секрета" format(uuid)
+// @Param        version  query    int    true  "Версия секрета"
+//
+// @Success      204  "Секрет успешно удалён"
+// @Failure      400  {object} api.ErrorResponse "Некорректный ID или версия"
+// @Failure      401  {object} api.ErrorResponse "Не авторизован"
+// @Failure      404  {object} api.ErrorResponse "Секрет не найден"
+// @Failure      409  {object} api.ErrorResponse "Конфликт версий"
+// @Failure      500  {object} api.ErrorResponse "Внутренняя ошибка"
+//
+// @Security     BearerAuth
+// @Router       /secrets/{id} [delete]
+func (h *Handler) DeleteSecret(w http.ResponseWriter, r *http.Request) {
+	// id из URL
+	secretIDStr := chi.URLParam(r, "id")
+	secretID, err := uuid.Parse(secretIDStr)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, serr.ErrInvalidInput)
+		return
+	}
+
+	// version из query
+	versionStr := r.URL.Query().Get("version")
+	version, err := strconv.Atoi(versionStr)
+	if err != nil || version <= 0 {
+		WriteError(w, http.StatusBadRequest, serr.ErrInvalidInput)
+		return
+	}
+
+	// userID из context
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, serr.ErrUnauthorized)
+		return
+	}
+
+	// вызов сервиса
+	err = h.Svc.Secrets.DeleteSecret(
+		r.Context(),
+		userID,
+		secretID,
+		version,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, serr.ErrConflict):
+			WriteError(w, http.StatusConflict, err)
+		case errors.Is(err, serr.ErrNotFound):
+			WriteError(w, http.StatusNotFound, err)
+		default:
+			h.Log.Logger.Sugar().Errorw(
+				"delete secret failed",
+				"error", err,
+				"user_id", userID.String(),
+				"secret_id", secretID.String(),
+			)
+			WriteError(w, http.StatusInternalServerError, serr.ErrInternal)
+		}
+		return
+	}
+
+	// успех
 	w.WriteHeader(http.StatusNoContent)
 }

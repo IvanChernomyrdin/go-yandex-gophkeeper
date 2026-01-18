@@ -116,3 +116,30 @@ func (s *SecretsService) UpdateSecret(ctx context.Context, userID uuid.UUID, sec
 	}
 	return s.repo.UpdateSecret(ctx, userID, secretID, data)
 }
+
+// DeleteSecret удаляет секрет пользователя с проверкой версии (optimistic locking).
+//
+// Метод удаляет секрет, принадлежащий пользователю userID, только если
+// текущая версия секрета совпадает с переданной version.
+// Если версия не совпадает, операция не выполняется и возвращается конфликт.
+//
+// Параметры:
+//   - ctx      — контекст выполнения
+//   - userID   — идентификатор пользователя (обязателен)
+//   - secretID — идентификатор секрета
+//   - version  — ожидаемая текущая версия секрета
+//
+// Возможные ошибки:
+//   - ErrUserIDEmpty — если userID == uuid.Nil
+//   - ErrNotFound    — если секрет не найден
+//   - ErrConflict    — если версия секрета не совпадает
+//   - ErrInternal    — внутренняя ошибка репозитория
+//
+// Успех:
+//   - nil — секрет успешно удалён
+func (s *SecretsService) DeleteSecret(ctx context.Context, userID uuid.UUID, secretID uuid.UUID, version int) error {
+	if userID == uuid.Nil {
+		return serr.ErrUserIDEmpty
+	}
+	return s.repo.DeleteSecret(ctx, userID, secretID, version)
+}

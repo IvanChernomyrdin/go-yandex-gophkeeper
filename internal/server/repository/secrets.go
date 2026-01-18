@@ -178,3 +178,70 @@ func (r *SecretsRepository) UpdateSecret(ctx context.Context, userID uuid.UUID, 
 
 	return serr.ErrConflict
 }
+
+// DeleteSecret удаляет секрет пользователя с проверкой версии.
+//
+// Секрет удаляется только если существует запись с указанными:
+//   - userID
+//   - secretID
+//   - version
+//
+// Если версия не совпадает, удаление не выполняется.
+//
+// Алгоритм:
+//  1. Выполняется DELETE с проверкой version
+//  2. Если ни одна строка не затронута:
+//     - проверяется существование секрета
+//     - если секрета нет вернётся ErrNotFound
+//     - если есть, но версия не совпала вернётся ErrConflict
+//
+// Параметры:
+//   - ctx      — контекст выполнения
+//   - userID   — идентификатор пользователя
+//   - secretID — идентификатор секрета
+//   - version  — ожидаемая версия секрета
+//
+// Возможные ошибки:
+//   - ErrNotFound  — секрет не найден
+//   - ErrConflict  — версия не совпадает
+//   - ErrInternal  — ошибка базы данных
+//
+// Успех:
+//   - nil — секрет успешно удалён
+func (r *SecretsRepository) DeleteSecret(ctx context.Context, userID uuid.UUID, secretID uuid.UUID, version int) error {
+	res, err := r.db.ExecContext(ctx, `
+    	DELETE FROM secrets
+    	WHERE user_id = $1
+    		AND id = $2
+    		AND version = $3`, userID, secretID, version)
+
+	if err != nil {
+		return serr.ErrInternal
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return serr.ErrInternal
+	}
+
+	if affected > 0 {
+		return nil
+	}
+
+	// различаем причину
+	var exists bool
+	err = r.db.QueryRowContext(ctx, `
+    	SELECT EXISTS (
+        SELECT 1 FROM secrets
+        WHERE user_id = $1 AND id = $2)`, userID, secretID).Scan(&exists)
+
+	if err != nil {
+		return serr.ErrInternal
+	}
+
+	if !exists {
+		return serr.ErrNotFound
+	}
+
+	return serr.ErrConflict
+}
