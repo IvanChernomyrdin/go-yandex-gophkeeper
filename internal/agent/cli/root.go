@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/agent/config"
+	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/agent/memory"
 )
 
 // App содержит состояние CLI-приложения, разделяемое между командами.
@@ -31,6 +32,9 @@ type App struct {
 	// Creds — загруженные учётные данные из файла конфигурации.
 	// Может быть nil, если загрузка не выполнялась или завершилась ошибкой.
 	Creds *config.Credentials
+
+	Secrets     *memory.SecretsStore
+	SecretsPath string
 }
 
 // NewRootCmd создаёт root-команду CLI и регистрирует подкоманды.
@@ -138,6 +142,20 @@ Delete <id>:
 				return err
 			}
 			app.Creds = creds
+
+			app.Secrets = memory.NewSecrets()
+
+			sp, err := memory.DefaultSecretsPath()
+			if err != nil {
+				return err
+			}
+			app.SecretsPath = sp
+
+			// загрузим локальные secrets (если файл есть)
+			if err := memory.LoadFromFile(app.SecretsPath, app.Secrets); err != nil {
+				return err
+			}
+
 			return nil
 		},
 	}
@@ -152,12 +170,11 @@ Delete <id>:
 	cmd.AddCommand(NewRefreshCmd(app))
 	cmd.AddCommand(NewVersionCmd(buildVersion, buildDate))
 
-	// cmd.AddCommand(SecretSync(app))
-	// cmd.AddCommand(SecretGetALL(app))
-	// cmd.AddCommand(SecretGetForID(app))
-	// cmd.AddCommand(SecretCreate(app))
-	// cmd.AddCommand(SecretUpdate(app))
-	// cmd.AddCommand(SecretDelete(app))
+	cmd.AddCommand(SecretSync(app))
+	cmd.AddCommand(SecretGet(app))
+	cmd.AddCommand(SecretCreate(app))
+	cmd.AddCommand(SecretUpdate(app))
+	cmd.AddCommand(SecretDelete(app))
 
 	return cmd
 }

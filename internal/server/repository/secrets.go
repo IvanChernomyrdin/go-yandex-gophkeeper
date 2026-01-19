@@ -8,6 +8,7 @@ import (
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service/models"
 	serr "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/errors"
+	sharModels "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/models"
 	"github.com/google/uuid"
 )
 
@@ -76,9 +77,9 @@ func (r *SecretsRepository) Create(
 // Возвращает:
 //   - []models.SecretResponse — список секретов (может быть пустым)
 //   - ErrInternal — при любой ошибке работы с БД
-func (r *SecretsRepository) ListSecrets(ctx context.Context, userID uuid.UUID) ([]models.SecretResponse, error) {
+func (r *SecretsRepository) ListSecrets(ctx context.Context, userID uuid.UUID) ([]sharModels.Secret, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT type, title, payload, meta, version, updated_at, created_at
+		SELECT id, type, title, payload, meta, version, updated_at, created_at
 		FROM secrets
 		WHERE user_id = $1
 		ORDER BY updated_at DESC
@@ -88,11 +89,11 @@ func (r *SecretsRepository) ListSecrets(ctx context.Context, userID uuid.UUID) (
 	}
 	defer rows.Close()
 
-	var result []models.SecretResponse
+	var result []sharModels.Secret
 
 	for rows.Next() {
-		var res models.SecretResponse
-		if err := rows.Scan(&res.Type, &res.Title, &res.Payload, &res.Meta, &res.Version, &res.UpdatedAt, &res.CreatedAt); err != nil {
+		var res sharModels.Secret
+		if err := rows.Scan(&res.ID, &res.Type, &res.Title, &res.Payload, &res.Meta, &res.Version, &res.UpdatedAt, &res.CreatedAt); err != nil {
 			return nil, serr.ErrInternal
 		}
 		result = append(result, res)
@@ -126,18 +127,18 @@ func (r *SecretsRepository) ListSecrets(ctx context.Context, userID uuid.UUID) (
 //   - ErrInternal  — внутренняя ошибка базы данных
 func (r *SecretsRepository) UpdateSecret(ctx context.Context, userID uuid.UUID, secretID uuid.UUID, data models.UpdateSecretRequest) error {
 	res, err := r.db.ExecContext(ctx, `
-		UPDATE secrets
-		SET
-			type = $1,
-			title = $2,
-			payload = $3,
-			meta = $4,
-			version = version + 1,
-			updated_at = now()
-		WHERE user_id = $5
-		  AND id = $6
-		  AND version = $7
-	`,
+	UPDATE secrets
+	SET
+		type      = COALESCE($1, type),
+		title     = COALESCE($2, title),
+		payload   = COALESCE($3, payload),
+		meta      = COALESCE($4, meta),
+		version   = version + 1,
+		updated_at = now()
+	WHERE user_id = $5
+	  AND id = $6
+	  AND version = $7
+`,
 		data.Type,
 		data.Title,
 		data.Payload,
@@ -176,7 +177,7 @@ func (r *SecretsRepository) UpdateSecret(ctx context.Context, userID uuid.UUID, 
 		return serr.ErrNotFound
 	}
 
-	return serr.ErrConflict
+	return serr.ErrSecretVersionConflict
 }
 
 // DeleteSecret удаляет секрет пользователя с проверкой версии.

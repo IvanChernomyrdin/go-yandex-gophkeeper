@@ -23,6 +23,7 @@ import (
 
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/config"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service/models"
+	sharModels "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/models"
 )
 
 // Repositories — набор интерфейсов, которые сервисный слой ожидает от слоя repository.
@@ -85,7 +86,7 @@ const (
 
 type SecretsRepo interface {
 	Create(ctx context.Context, userID uuid.UUID, typ SecretType, title string, payload string, meta *string) (id uuid.UUID, version int, updatedAt time.Time, err error)
-	ListSecrets(ctx context.Context, userID uuid.UUID) ([]models.SecretResponse, error)
+	ListSecrets(ctx context.Context, userID uuid.UUID) ([]sharModels.Secret, error)
 	UpdateSecret(ctx context.Context, userID uuid.UUID, secretID uuid.UUID, data models.UpdateSecretRequest) error
 	DeleteSecret(ctx context.Context, userID uuid.UUID, secretID uuid.UUID, version int) error
 }

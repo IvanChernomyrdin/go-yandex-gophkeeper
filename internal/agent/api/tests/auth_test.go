@@ -24,7 +24,7 @@ func TestClient_Register_Success(t *testing.T) {
 		require.Equal(t, "StrongPass123", req.Password)
 
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.RegisterResponse{UserID: "u1"})
+		json.NewEncoder(w).Encode(api.RegisterResponse{UserID: "u1"})
 	})
 
 	srv := httptest.NewTLSServer(mux)
@@ -49,7 +49,7 @@ func TestClient_Login_Success(t *testing.T) {
 		require.Equal(t, "StrongPass123", req.Password)
 
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.LoginResponse{
+		json.NewEncoder(w).Encode(api.LoginResponse{
 			AccessToken:  "access-1",
 			RefreshToken: "refresh-1",
 		})
@@ -77,7 +77,7 @@ func TestClient_Refresh_Success(t *testing.T) {
 		require.Equal(t, "refresh-1", req.RefreshToken)
 
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(api.RefreshResponse{
+		json.NewEncoder(w).Encode(api.RefreshResponse{
 			AccessToken:  "access-2",
 			RefreshToken: "refresh-2",
 		})
@@ -118,7 +118,7 @@ func TestClient_Non2xx_ReturnsBodyAsError(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/auth/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = io.WriteString(w, "invalid credentials")
+		io.WriteString(w, "invalid credentials")
 	})
 
 	srv := httptest.NewTLSServer(mux)

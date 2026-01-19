@@ -16,6 +16,7 @@ import (
 
 	service "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service"
 	models "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service/models"
+	models0 "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/models"
 	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -217,10 +218,10 @@ func (mr *MockSecretsRepoMockRecorder) DeleteSecret(ctx, userID, secretID, versi
 }
 
 // ListSecrets mocks base method.
-func (m *MockSecretsRepo) ListSecrets(ctx context.Context, userID uuid.UUID) ([]models.SecretResponse, error) {
+func (m *MockSecretsRepo) ListSecrets(ctx context.Context, userID uuid.UUID) ([]models0.Secret, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListSecrets", ctx, userID)
-	ret0, _ := ret[0].([]models.SecretResponse)
+	ret0, _ := ret[0].([]models0.Secret)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -9,6 +9,7 @@ import (
 	repoMocks "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service/mocks"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service/models"
 	serr "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/errors"
+	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/utils"
 	"github.com/google/uuid"
 	"go.uber.org/mock/gomock"
 )
@@ -45,9 +46,9 @@ func TestSecretsService_UpdateSecret_RepoError(t *testing.T) {
 	secretID := uuid.New()
 
 	req := models.UpdateSecretRequest{
-		Type:    "text",
-		Title:   "note",
-		Payload: []byte("cipher"),
+		Type:    utils.StrPtr("text"),
+		Title:   utils.StrPtr("note"),
+		Payload: utils.StrPtr("cipher"),
 		Version: 1,
 	}
 
@@ -80,9 +81,9 @@ func TestSecretsService_UpdateSecret_Success(t *testing.T) {
 	meta := "meta"
 
 	req := models.UpdateSecretRequest{
-		Type:    "text",
-		Title:   "note",
-		Payload: []byte("cipher"),
+		Type:    utils.StrPtr("text"),
+		Title:   utils.StrPtr("note"),
+		Payload: utils.StrPtr("cipher"),
 		Meta:    &meta,
 		Version: 1,
 	}

@@ -10,9 +10,31 @@ import (
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/middleware"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service/models"
 	serr "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/errors"
+	sharedModels "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/models"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
+
+// Secret — swagger-схема секрета (копия sharedModels.Secret).
+// Нужна, потому что swag плохо резолвит типы через alias/импорт-пакеты.
+type Secret struct {
+	ID        string    `json:"id"`
+	Type      string    `json:"type"`
+	Title     string    `json:"title"`
+	Payload   string    `json:"payload"`
+	Meta      *string   `json:"meta,omitempty"`
+	Version   int       `json:"version"`
+	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// GetAllSecretsResponse — swagger-схема ответа GET /secrets.
+type GetAllSecretsResponse struct {
+	Secrets []Secret `json:"secrets"`
+}
+
+// UpdateSecretRequest — алиас для swagger, чтобы swag видел тип запроса.
+type UpdateSecretRequest = models.UpdateSecretRequest
 
 // CreateSecretRequest тело запроса создания секрета.
 //
@@ -38,20 +60,6 @@ type ErrorResponse struct {
 }
 
 // CreateSecret создаёт новый секрет для аутентифицированного пользователя.
-//
-// Сервер:
-//   - принимает только ciphertext (E2E, без расшифровки);
-//   - валидирует тип секрета;
-//   - проверяет ограничения на размер payload и meta;
-//   - создаёт первую версию секрета (version = 1).
-//
-// Требует JWT-аутентификацию.
-//
-// Возможные ошибки:
-//   - ErrInvalidInput — неверные поля запроса;
-//   - ErrPayloadTooLarge — превышены лимиты размера;
-//   - ErrUnauthorized — пользователь не аутентифицирован;
-//   - ErrInternal — внутренняя ошибка сервера.
 //
 // @Summary      Create secret
 // @Description  Creates a new secret for authenticated user. Server stores ciphertext only.
@@ -116,17 +124,6 @@ func (h *Handler) CreateSecret(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ListSecrets возвращает все секреты текущего пользователя.
-//
-// Пользователь определяется по JWT-токену (middleware).
-// Сервер не расшифровывает payload и возвращает ciphertext как есть.
-//
-// Возможные ошибки:
-//   - 401 Unauthorized: отсутствует или некорректный JWT;
-//   - 500 Internal Server Error: ошибка доступа к хранилищу.
-//
-// Ответ всегда возвращается в формате JSON.
-
 // ListSecrets godoc
 // @Summary      List secrets
 // @Description  Returns all secrets belonging to the authenticated user.
@@ -135,9 +132,9 @@ func (h *Handler) CreateSecret(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Success      200 {array} models.GetAllSecretsResponse
-// @Failure      401 {object} api.ErrorResponse "Unauthorized"
-// @Failure      500 {object} api.ErrorResponse "Internal server error"
+// @Success      200 {object} GetAllSecretsResponse
+// @Failure      401 {object} ErrorResponse "Unauthorized"
+// @Failure      500 {object} ErrorResponse "Internal server error"
 // @Router       /secrets [get]
 func (h *Handler) ListSecrets(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.UserIDFromContext(r.Context())
@@ -145,14 +142,14 @@ func (h *Handler) ListSecrets(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusUnauthorized, serr.ErrUnauthorized)
 		return
 	}
-	// вызываем сервис
+
 	secret, err := h.Svc.Secrets.ListSecrets(r.Context(), userID)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, serr.ErrInternal)
 		return
 	}
 
-	data := models.GetAllSecretsResponse{
+	data := sharedModels.GetAllSecretsResponse{
 		Secrets: secret,
 	}
 
@@ -161,37 +158,22 @@ func (h *Handler) ListSecrets(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(data)
 }
 
-// UpdateSecret обновляет существующий секрет пользователя.
-//
-// Идентификатор секрета передаётся в URL-параметре `{id}`.
-// Пользователь определяется по JWT-токену (middleware).
-//
-// Обновление выполняется с использованием optimistic locking:
-// сервер проверяет, что версия секрета и время последнего обновления
-// совпадают с текущими значениями в базе данных.
-// Это позволяет обнаружить изменения, выполненные с другого устройства.
-//
-// Если секрет был удалён или не существует, возвращается ошибка Not Found.
-// Если версия или updated_at не совпадают — возвращается ошибка конфликта.
-//
 // UpdateSecret godoc
 // @Summary      Update secret
 // @Description  Updates an existing secret belonging to the authenticated user.
 // @Description  Uses optimistic locking (version / updated_at check).
-// @Description  If the secret was modified or deleted on another device,
-// @Description  a conflict or not found error is returned.
 // @Tags         secrets
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        id      path      string  true  "Secret ID (UUID)"
-// @Param        body    body      api.UpdateSecretRequest  true  "Updated secret data"
-// @Success      200 {object} api.UpdateSecretResponse
-// @Failure      400 {object} api.ErrorResponse "Bad request"
-// @Failure      401 {object} api.ErrorResponse "Unauthorized"
-// @Failure      404 {object} api.ErrorResponse "Not found"
-// @Failure      409 {object} api.ErrorResponse "Conflict"
-// @Failure      500 {object} api.ErrorResponse "Internal server error"
+// @Param        id    path  string              true  "Secret ID (UUID)"
+// @Param        body  body  UpdateSecretRequest  true  "Updated secret data"
+// @Success      204 "No Content"
+// @Failure      400 {object} ErrorResponse "Bad request"
+// @Failure      401 {object} ErrorResponse "Unauthorized"
+// @Failure      404 {object} ErrorResponse "Not found"
+// @Failure      409 {object} ErrorResponse "Conflict"
+// @Failure      500 {object} ErrorResponse "Internal server error"
 // @Router       /secrets/{id} [put]
 func (h *Handler) UpdateSecret(w http.ResponseWriter, r *http.Request) {
 	secretIDStr := chi.URLParam(r, "id")
@@ -201,7 +183,7 @@ func (h *Handler) UpdateSecret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req models.UpdateSecretRequest
+	var req UpdateSecretRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		WriteError(w, http.StatusBadRequest, serr.ErrBadJSON)
 		return
@@ -236,49 +218,28 @@ func (h *Handler) UpdateSecret(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// DeleteSecret удаляет секрет пользователя с optimistic locking по версии.
-//
-// Параметры:
-//   - ctx     — контекст запроса
-//   - userID  — идентификатор пользователя (обязателен)
-//   - secretID — идентификатор секрета
-//   - version — текущая версия секрета
-//
-// Ошибки:
-//   - ErrUserIDEmpty — если userID == uuid.Nil
-//   - ErrNotFound    — если секрет не найден
-//   - ErrConflict    — если версия не совпадает
-//   - ErrInternal    — внутренняя ошибка
-//
-// Успех:
-//   - nil — секрет успешно удалён
-//
-// # DeleteSecret godoc
-//
+// DeleteSecret godoc
 // @Summary      Удалить секрет
 // @Description  Удаляет секрет пользователя с проверкой версии (optimistic locking).
 // @Description  Если версия не совпадает — возвращается конфликт.
 // @Tags         secrets
 // @Accept       json
 // @Produce      json
-//
 // @Param        id       path     string true  "ID секрета" format(uuid)
 // @Param        version  query    int    true  "Версия секрета"
-//
-// @Success      204  "Секрет успешно удалён"
-// @Failure      400  {object} api.ErrorResponse "Некорректный ID или версия"
-// @Failure      401  {object} api.ErrorResponse "Не авторизован"
-// @Failure      404  {object} api.ErrorResponse "Секрет не найден"
-// @Failure      409  {object} api.ErrorResponse "Конфликт версий"
-// @Failure      500  {object} api.ErrorResponse "Внутренняя ошибка"
-//
+// @Success      204 "Секрет успешно удалён"
+// @Failure      400 {object} ErrorResponse "Некорректный ID или версия"
+// @Failure      401 {object} ErrorResponse "Не авторизован"
+// @Failure      404 {object} ErrorResponse "Секрет не найден"
+// @Failure      409 {object} ErrorResponse "Конфликт версий"
+// @Failure      500 {object} ErrorResponse "Внутренняя ошибка"
 // @Security     BearerAuth
 // @Router       /secrets/{id} [delete]
 func (h *Handler) DeleteSecret(w http.ResponseWriter, r *http.Request) {
-	// id из URL
 	secretIDStr := chi.URLParam(r, "id")
 	secretID, err := uuid.Parse(secretIDStr)
 	if err != nil {
@@ -286,7 +247,6 @@ func (h *Handler) DeleteSecret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// version из query
 	versionStr := r.URL.Query().Get("version")
 	version, err := strconv.Atoi(versionStr)
 	if err != nil || version <= 0 {
@@ -294,14 +254,12 @@ func (h *Handler) DeleteSecret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// userID из context
 	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok {
 		WriteError(w, http.StatusUnauthorized, serr.ErrUnauthorized)
 		return
 	}
 
-	// вызов сервиса
 	err = h.Svc.Secrets.DeleteSecret(
 		r.Context(),
 		userID,
@@ -326,6 +284,5 @@ func (h *Handler) DeleteSecret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// успех
 	w.WriteHeader(http.StatusNoContent)
 }

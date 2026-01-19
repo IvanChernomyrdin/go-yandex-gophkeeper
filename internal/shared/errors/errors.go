@@ -33,7 +33,9 @@ var (
 // только для секретов
 var (
 	// secrets
-	ErrPayloadTooLarge = errors.New("payload too large")
-	ErrMetaTooLarge    = errors.New("meta too large")
-	ErrUserIDEmpty     = errors.New("user id cannot be empty")
+	ErrPayloadTooLarge       = errors.New("payload too large")
+	ErrMetaTooLarge          = errors.New("meta too large")
+	ErrUserIDEmpty           = errors.New("user id cannot be empty")
+	ErrSecretNotFound        = errors.New("secret not found")
+	ErrSecretVersionConflict = errors.New("version conflict")
 )

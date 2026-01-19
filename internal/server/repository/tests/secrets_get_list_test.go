@@ -27,8 +27,10 @@ func TestSecretsRepository_ListSecrets_Success(t *testing.T) {
 	updatedAt := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 	createdAt := time.Date(2025, 1, 1, 9, 0, 0, 0, time.UTC)
 	meta := "meta"
+	id := uuid.New()
 
 	rows := sqlmock.NewRows([]string{
+		"id",
 		"type",
 		"title",
 		"payload",
@@ -37,16 +39,17 @@ func TestSecretsRepository_ListSecrets_Success(t *testing.T) {
 		"updated_at",
 		"created_at",
 	}).AddRow(
+		id,
 		"text",
 		"note",
-		[]byte("ciphertext"),
-		&meta,
+		"ciphertext",
+		meta,
 		1,
 		updatedAt,
 		createdAt,
 	)
 
-	mock.ExpectQuery(`(?s)SELECT type, title, payload, meta, version, updated_at, created_at.*FROM secrets.*WHERE user_id = \$1.*ORDER BY updated_at DESC`).
+	mock.ExpectQuery(`(?s)SELECT id, type, title, payload, meta, version, updated_at, created_at.*FROM secrets.*WHERE user_id = \$1.*ORDER BY updated_at DESC`).
 		WithArgs(userID).
 		WillReturnRows(rows)
 

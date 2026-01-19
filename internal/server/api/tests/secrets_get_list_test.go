@@ -16,8 +16,8 @@ import (
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/middleware"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service"
 	repoMocks "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service/mocks"
-	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service/models"
 	serr "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/errors"
+	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/models"
 )
 
 // Нет userID в context
@@ -85,11 +85,11 @@ func TestHandler_ListSecrets_Success(t *testing.T) {
 	createdAt, _ := time.Parse(time.RFC3339, "2025-01-01T09:00:00Z")
 	meta := "meta"
 
-	repoResult := []models.SecretResponse{
+	repoResult := []models.Secret{
 		{
 			Type:      "text",
 			Title:     "note",
-			Payload:   []byte("ciphertext"),
+			Payload:   "ciphertext",
 			Meta:      &meta,
 			Version:   1,
 			UpdatedAt: updatedAt,

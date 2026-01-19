@@ -29,6 +29,34 @@ definitions:
       error:
         type: string
     type: object
+  api.GetAllSecretsResponse:
+    properties:
+      secrets:
+        items:
+          $ref: '#/definitions/api.Secret'
+        type: array
+    type: object
+  api.Secret:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      meta:
+        type: string
+      payload:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
+      updated_at:
+        type: string
+      version:
+        type: integer
+    type: object
+  api.UpdateSecretRequest:
+    type: object
   internal_server_api.LoginRequest:
     properties:
       email:
@@ -186,6 +214,32 @@ paths:
       tags:
       - auth
   /secrets:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Returns all secrets belonging to the authenticated user.
+        Payload is returned as ciphertext (E2E encryption).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.GetAllSecretsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List secrets
+      tags:
+      - secrets
     post:
       consumes:
       - application/json
@@ -224,6 +278,103 @@ paths:
       security:
       - BearerAuth: []
       summary: Create secret
+      tags:
+      - secrets
+  /secrets/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: |-
+        Удаляет секрет пользователя с проверкой версии (optimistic locking).
+        Если версия не совпадает — возвращается конфликт.
+      parameters:
+      - description: ID секрета
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Версия секрета
+        in: query
+        name: version
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Секрет успешно удалён
+        "400":
+          description: Некорректный ID или версия
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Секрет не найден
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Конфликт версий
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Удалить секрет
+      tags:
+      - secrets
+    put:
+      consumes:
+      - application/json
+      description: |-
+        Updates an existing secret belonging to the authenticated user.
+        Uses optimistic locking (version / updated_at check).
+      parameters:
+      - description: Secret ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated secret data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateSecretRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update secret
       tags:
       - secrets
 securityDefinitions:

@@ -8,6 +8,7 @@ import (
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/config"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service/models"
 	serr "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/errors"
+	sharModels "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/models"
 	"github.com/google/uuid"
 )
 
@@ -85,10 +86,10 @@ func (s *SecretsService) Create(ctx context.Context, userID uuid.UUID, typ strin
 //   - userID — идентификатор пользователя
 //
 // Возвращает:
-//   - срез моделей models.SecretResponse при успешном выполнении
+//   - срез моделей SecretResponse при успешном выполнении
 //   - serr.ErrUserIDEmpty, если userID равен uuid.Nil
 //   - ошибку, полученную из слоя репозитория
-func (s *SecretsService) ListSecrets(ctx context.Context, userID uuid.UUID) ([]models.SecretResponse, error) {
+func (s *SecretsService) ListSecrets(ctx context.Context, userID uuid.UUID) ([]sharModels.Secret, error) {
 
 	if userID == uuid.Nil {
 		return nil, serr.ErrUserIDEmpty
