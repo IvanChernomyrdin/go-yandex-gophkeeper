@@ -14,6 +14,15 @@
   - Банковские карты
   - OTP-коды
 
+## Основные CLI Команды
+
+gophkeeper sync                     # Синхронизация с сервером
+gophkeeper get                      # Показать все секреты
+gophkeeper get <id>                 # Показать секрет по ID
+gophkeeper set --type <тип> --title "Название" --payload '{"данные": "в json"}'
+gophkeeper update <id> --title "Новое название"
+gophkeeper delete <id>
+
 ## Установка
 
 ### Быстрый запуск:
