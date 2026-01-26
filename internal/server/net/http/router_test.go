@@ -1,4 +1,4 @@
-package tests
+package http
 
 import (
 	"bytes"
@@ -69,7 +69,7 @@ func TestRouter_AuthLogin_OK(t *testing.T) {
 	httpLogger := logger.NewHTTPLogger()
 
 	h := api.NewHandler(svc, httpLogger, verifier)
-	router := api.NewRouter(h)
+	router := NewRouter(h)
 
 	// --- arrange: ожидания моков ---
 	email := "test@example.com"

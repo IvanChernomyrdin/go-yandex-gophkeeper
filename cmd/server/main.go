@@ -43,16 +43,16 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/api"
+	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/config"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/middleware"
+	h "github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/net/http"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/repository"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/service"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/logger"
-
-	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/config"
 	"github.com/joho/godotenv"
+	"golang.org/x/sync/errgroup"
 
 	_ "github.com/IvanChernomyrdin/go-yandex-gophkeeper/swagger/docs"
 )
@@ -77,6 +77,7 @@ func main() {
 	if err := config.Init(cfg.DB.DSN); err != nil {
 		sugar.Fatal(err)
 	}
+
 	// возвращаем указатель на db
 	db := config.GetDB()
 	// делаем отложенное закрытие бд
@@ -107,7 +108,7 @@ func main() {
 	// создаём хандлер
 	handler := api.NewHandler(svc, httpLogger, verifier)
 	// создаём роутер
-	router := api.NewRouter(handler)
+	router := h.NewRouter(handler)
 	//создаём сервер
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 
@@ -118,51 +119,49 @@ func main() {
 		WriteTimeout: cfg.Server.WriteTimeout,
 		IdleTimeout:  cfg.Server.IdleTimeout,
 	}
-	// канал для ошибок
-	serverErrChan := make(chan error, 1)
 
-	// запускаем сервер
-	go func() {
-		sugar.Infof("server started on %s", addr)
-
-		err := server.ListenAndServeTLS(cfg.TLS.CertFile, cfg.TLS.KeyFile)
-
-		// err всегда вернёт ошибку при остановке. Стандартное завершение - ErrServerClosed
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			serverErrChan <- err
-			return
-		}
-		serverErrChan <- nil
-	}()
-
-	// ждём сигнал или остановку сервака
-	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	// создаём контекст и errgroup
+	ctx, stop := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	)
 	defer stop()
 
-	select {
-	case <-signalCtx.Done():
-		sugar.Info("shutdown signal received")
-	case err := <-serverErrChan:
-		if err != nil {
-			sugar.Fatalf("server error: %v", err)
+	g, ctx := errgroup.WithContext(ctx)
+
+	// запускаем сервер
+	g.Go(func() error {
+		sugar.Infof("server started on %s", addr)
+
+		if err := server.ListenAndServeTLS(
+			cfg.TLS.CertFile,
+			cfg.TLS.KeyFile,
+		); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
 		}
-		sugar.Infof("server stopped")
-		return
-	}
+		return nil
+	})
 
 	// graceful shutdown с таймаутом из конфига
-	shutdownTimeout := cfg.Server.ShutdownTimeout
-	if shutdownTimeout <= 0 {
-		shutdownTimeout = 10 * time.Second
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
+	g.Go(func() error {
+		<-ctx.Done()
 
-	if err := server.Shutdown(ctx); err != nil {
-		sugar.Errorf("graceful shutdown failed: %v", err)
-		// закрываем принудительно
-		server.Close()
-	}
+		sugar.Info("shutdown signal received")
 
+		shutdownCtx, cancel := context.WithTimeout(
+			ctx,
+			cfg.Server.ShutdownTimeout,
+		)
+		defer cancel()
+
+		return server.Shutdown(shutdownCtx)
+	})
+
+	// ожидание и единная обработка ошибок
+	if err := g.Wait(); err != nil {
+		sugar.Fatalf("server stopped with error: %v", err)
+	}
 	sugar.Info("server gracefully stopped")
 }

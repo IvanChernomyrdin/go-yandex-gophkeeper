@@ -1,15 +1,15 @@
-// Package api реализует HTTP-слой сервера GophKeeper.
+// Package http реализует маршрутизацию HTTP-слоя сервера GophKeeper.
 //
 // Пакет отвечает за:
 //   - регистрацию HTTP-маршрутов и настройку роутера (chi);
-//   - обработку входящих запросов и формирование ответов (JSON, статусы);
-//   - маппинг доменных ошибок (service/repository) в HTTP-коды и сообщения;
-//   - подключение middleware (логирование, проверка JWT и т.д.).
-package api
+//   - логирование выполнения HTTP-запросов;
+//   - выполняет проверку JWT access-токенов;
+package http
 
 import (
 	"net/http"
 
+	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/api"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/middleware"
 	"github.com/go-chi/chi/v5"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -21,7 +21,7 @@ import (
 //   - публичные эндпоинты аутентификации под префиксом /auth;
 //   - middleware логирования для всех запросов;
 //   - группу защищённых JWT эндпоинтов (пока без маршрутов secrets).
-func NewRouter(h *Handler) http.Handler {
+func NewRouter(h *api.Handler) http.Handler {
 	r := chi.NewRouter()
 	// логирование всех запросов
 	r.Use(middleware.LoggerMiddleware())
