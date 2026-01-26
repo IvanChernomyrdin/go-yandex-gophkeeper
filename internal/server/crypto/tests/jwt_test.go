@@ -9,6 +9,7 @@ import (
 )
 
 func TestNewAccessToken_Success(t *testing.T) {
+	t.Parallel()
 	cfg := crypt.JWTConfig{
 		Issuer:     "gophkeeper",
 		Audience:   "gophkeeper-cli",

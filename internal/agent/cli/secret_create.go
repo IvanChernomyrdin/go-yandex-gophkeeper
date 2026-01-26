@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/base64"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -91,7 +92,7 @@ Master password не передаётся флагом (чтобы не утек
 			if err != nil {
 				return fmt.Errorf("encrypt payload: %w", err)
 			}
-			cipherStr := string(cipherBytes)
+			cipherStr := base64.StdEncoding.EncodeToString(cipherBytes)
 
 			var metaPtr *string
 			if cmd.Flags().Changed("meta") {

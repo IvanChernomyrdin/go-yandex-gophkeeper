@@ -16,14 +16,23 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-// успех
-func TestHandler_DeleteSecret_Success(t *testing.T) {
+// helper: создаёт Handler с моками SecretsService
+func newTestHandlerWithSecrets(t *testing.T) (*api.Handler, *repoMocks.MockSecretsRepo) {
+	t.Helper()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	t.Cleanup(ctrl.Finish)
 
 	repo := repoMocks.NewMockSecretsRepo(ctrl)
 	svc := service.NewSecretsService(repo, config.SecretsConfig{})
-	h := api.NewHandler(&service.Services{Secrets: svc}, nil, nil)
+	handler := api.NewHandler(&service.Services{Secrets: svc}, nil, nil)
+
+	return handler, repo
+}
+
+func TestHandler_DeleteSecret_Success(t *testing.T) {
+	t.Parallel()
+
+	h, repo := newTestHandlerWithSecrets(t)
 
 	userID := uuid.New()
 	secretID := uuid.New()
@@ -40,9 +49,7 @@ func TestHandler_DeleteSecret_Success(t *testing.T) {
 		"/secrets/"+secretID.String()+"?version=1",
 		nil,
 	)
-	req = req.WithContext(
-		middleware.ContextWithUserID(req.Context(), userID),
-	)
+	req = req.WithContext(middleware.ContextWithUserID(req.Context(), userID))
 
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)
@@ -52,14 +59,10 @@ func TestHandler_DeleteSecret_Success(t *testing.T) {
 	}
 }
 
-// не авторизован
 func TestHandler_DeleteSecret_Unauthorized(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	t.Parallel()
 
-	repo := repoMocks.NewMockSecretsRepo(ctrl)
-	svc := service.NewSecretsService(repo, config.SecretsConfig{})
-	h := api.NewHandler(&service.Services{Secrets: svc}, nil, nil)
+	h, _ := newTestHandlerWithSecrets(t)
 
 	r := chi.NewRouter()
 	r.Delete("/secrets/{id}", h.DeleteSecret)
@@ -78,14 +81,10 @@ func TestHandler_DeleteSecret_Unauthorized(t *testing.T) {
 	}
 }
 
-// конфликт версий
 func TestHandler_DeleteSecret_Conflict(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	t.Parallel()
 
-	repo := repoMocks.NewMockSecretsRepo(ctrl)
-	svc := service.NewSecretsService(repo, config.SecretsConfig{})
-	h := api.NewHandler(&service.Services{Secrets: svc}, nil, nil)
+	h, repo := newTestHandlerWithSecrets(t)
 
 	userID := uuid.New()
 	secretID := uuid.New()
@@ -102,9 +101,7 @@ func TestHandler_DeleteSecret_Conflict(t *testing.T) {
 		"/secrets/"+secretID.String()+"?version=1",
 		nil,
 	)
-	req = req.WithContext(
-		middleware.ContextWithUserID(req.Context(), userID),
-	)
+	req = req.WithContext(middleware.ContextWithUserID(req.Context(), userID))
 
 	rec := httptest.NewRecorder()
 	r.ServeHTTP(rec, req)

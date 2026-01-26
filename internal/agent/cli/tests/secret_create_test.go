@@ -2,6 +2,7 @@ package tests
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -47,18 +48,20 @@ func TestSecretCreate_Success_NoMeta(t *testing.T) {
 			if r.URL.Path != "/secrets" {
 				t.Fatalf("expected /secrets, got %s", r.URL.Path)
 			}
+
 			if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
 				t.Fatalf("decode request: %v", err)
 			}
 
-			// ВАЖНО: отдаём сырой JSON, а не SecretResponse struct literal
+			// отдаём успешный ответ (payload в ответе тут не важен,
+			// но пусть будет в актуальном формате: base64)
 			now := time.Now().Format(time.RFC3339Nano)
 			w.Header().Set("Content-Type", "application/json")
 			w.Write([]byte(`{
 				"id":"11111111-1111-1111-1111-111111111111",
 				"type":"text",
 				"title":"E2E text",
-				"payload":"CIPHERTEXT",
+				"payload":"` + base64.StdEncoding.EncodeToString([]byte("CIPHERTEXT")) + `",
 				"version":1,
 				"updated_at":"` + now + `",
 				"created_at":"` + now + `"
@@ -66,12 +69,16 @@ func TestSecretCreate_Success_NoMeta(t *testing.T) {
 		}))
 		defer srv.Close()
 
-		cli.NewAPIClient = func(_ string) *api.Client { return api.NewClient(srv.URL) }
-		cli.ReadMasterPassword = func(_ *cobra.Command, _ bool) (string, error) { return "pw", nil }
-		cli.EncryptPayload = func(_ string, _ []byte) ([]byte, error) { return []byte("CIPHERTEXT"), nil }
+		cli.NewAPIClient = func(string) *api.Client { return api.NewClient(srv.URL) }
+		cli.ReadMasterPassword = func(*cobra.Command, bool) (string, error) { return "pw", nil }
+
+		// EncryptPayload возвращает сырые байты, а CLI обязан отправлять base64-строку
+		cli.EncryptPayload = func(string, []byte) ([]byte, error) {
+			return []byte("CIPHERTEXT"), nil
+		}
 
 		saved := false
-		cli.SaveSecretsToFile = func(_ string, _ *memory.SecretsStore) error {
+		cli.SaveSecretsToFile = func(string, *memory.SecretsStore) error {
 			saved = true
 			return nil
 		}
@@ -93,9 +100,10 @@ func TestSecretCreate_Success_NoMeta(t *testing.T) {
 			t.Fatalf("execute: %v", err)
 		}
 
-		// Проверяем, что payload ушёл именно "зашифрованный"
-		if got["payload"] != "CIPHERTEXT" {
-			t.Fatalf("payload mismatch, got=%v", got["payload"])
+		// Проверяем, что payload ушёл base64(EncryptPayload(...))
+		wantPayload := base64.StdEncoding.EncodeToString([]byte("CIPHERTEXT"))
+		if got["payload"] != wantPayload {
+			t.Fatalf("payload mismatch, got=%v want=%v", got["payload"], wantPayload)
 		}
 
 		// meta не должен улетать, если флаг не указан
@@ -104,7 +112,7 @@ func TestSecretCreate_Success_NoMeta(t *testing.T) {
 		}
 
 		if !saved {
-			t.Fatalf("expected SaveToFile called")
+			t.Fatalf("expected SaveSecretsToFile called")
 		}
 
 		if !strings.Contains(out.String(), "created secret 11111111-1111-1111-1111-111111111111 (v1)") {

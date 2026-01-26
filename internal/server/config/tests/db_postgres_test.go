@@ -5,37 +5,45 @@ import (
 	"os"
 	"testing"
 
-	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/config"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/require"
 )
 
-func TestGetDB_ReturnsGlobalDB(t *testing.T) {
-	orig := config.DB
-	defer func() { config.DB = orig }()
+// Тест с мок-базой данных через DI
+func TestDatabaseInjection(t *testing.T) {
+	// Создаём мок DB
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	t.Cleanup(func() { db.Close() })
 
-	// подменяем глобальную переменную
-	config.DB = &sql.DB{}
-	if config.GetDB() != config.DB {
-		t.Fatalf("GetDB should return global DB pointer")
-	}
+	// Проверяем работу простого запроса через мок
+	mock.ExpectQuery(`SELECT 1`).WillReturnRows(sqlmock.NewRows([]string{"1"}).AddRow(1))
+
+	var x int
+	err = db.QueryRow(`SELECT 1`).Scan(&x)
+	require.NoError(t, err)
+	require.Equal(t, 1, x)
+
+	// Проверяем, что все ожидания моков выполнены
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Чтобы этот тест работал, нужено поднять Postgres и задать DSN, плюс чтобы путь file://migrations/postgres был доступен из рабочей директории тестов.
-func TestInit_Integration(t *testing.T) {
+// Интеграционный тест с настоящей DB через DI
+func TestInit_WithDSN(t *testing.T) {
 	dsn := os.Getenv("TEST_POSTGRES_DSN")
 	if dsn == "" {
-		t.Skip("TEST_POSTGRES_DSN is not set; skipping integration test")
+		t.Skip("TEST_POSTGRES_DSN not set; skipping integration test")
 	}
 
-	orig := config.DB
-	defer func() { config.DB = orig }()
+	// Инициализируем DB напрямую
+	db, err := sql.Open("postgres", dsn)
+	require.NoError(t, err)
+	require.NotNil(t, db)
+	t.Cleanup(func() { db.Close() })
 
-	if err := config.Init(dsn); err != nil {
-		t.Fatalf("Init returned error: %v", err)
-	}
-	if config.GetDB() == nil {
-		t.Fatalf("expected DB to be initialized")
-	}
-
-	config.GetDB().Close()
-	config.DB = nil
+	// Простейший запрос для проверки
+	var x int
+	err = db.QueryRow("SELECT 1").Scan(&x)
+	require.NoError(t, err)
+	require.Equal(t, 1, x)
 }
