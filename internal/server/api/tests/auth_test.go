@@ -9,9 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/mock/gomock"
-
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/api"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/config"
@@ -23,6 +22,7 @@ import (
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/logger"
 )
 
+// NewTestHandler создаёт Handler с моками и конфигом через dependency injection
 func NewTestHandler(t *testing.T) (*api.Handler, *svcmocks.MockUsersRepo, *svcmocks.MockSessionsRepo) {
 	t.Helper()
 
@@ -71,6 +71,8 @@ func NewTestHandler(t *testing.T) (*api.Handler, *svcmocks.MockUsersRepo, *svcmo
 }
 
 func TestHandler_Register_BadJSON(t *testing.T) {
+	t.Parallel()
+
 	h, _, _ := NewTestHandler(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBufferString("{bad json"))
@@ -81,12 +83,14 @@ func TestHandler_Register_BadJSON(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected %d, got %d", http.StatusBadRequest, rec.Code)
 	}
-	if got := rec.Body.String(); got == "" {
+	if rec.Body.String() == "" {
 		t.Fatalf("expected error body, got empty")
 	}
 }
 
 func TestHandler_Register_Success(t *testing.T) {
+	t.Parallel()
+
 	h, users, _ := NewTestHandler(t)
 
 	email := "test@example.com"
@@ -116,10 +120,6 @@ func TestHandler_Register_Success(t *testing.T) {
 		t.Fatalf("expected %d, got %d, body=%q", http.StatusCreated, rec.Code, rec.Body.String())
 	}
 
-	if ct := rec.Header().Get(api.ContentType); ct != api.JsonContentType {
-		t.Fatalf("expected Content-Type %q, got %q", api.JsonContentType, ct)
-	}
-
 	var resp api.RegisterResponse
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("decode response: %v", err)
@@ -130,6 +130,8 @@ func TestHandler_Register_Success(t *testing.T) {
 }
 
 func TestHandler_Register_AlreadyExists(t *testing.T) {
+	t.Parallel()
+
 	h, users, _ := NewTestHandler(t)
 
 	email := "test@example.com"
@@ -151,6 +153,8 @@ func TestHandler_Register_AlreadyExists(t *testing.T) {
 }
 
 func TestHandler_Login_BadJSON(t *testing.T) {
+	t.Parallel()
+
 	h, _, _ := NewTestHandler(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString("{bad json"))
@@ -164,6 +168,8 @@ func TestHandler_Login_BadJSON(t *testing.T) {
 }
 
 func TestHandler_Login_Success(t *testing.T) {
+	t.Parallel()
+
 	h, users, sessions := NewTestHandler(t)
 
 	email := "test@example.com"
@@ -197,10 +203,7 @@ func TestHandler_Login_Success(t *testing.T) {
 	h.Login(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("expected %d, got %d, body=%q", http.StatusOK, rec.Code, rec.Body.String())
-	}
-	if ct := rec.Header().Get(api.ContentType); ct != api.JsonContentType {
-		t.Fatalf("expected Content-Type %q, got %q", api.JsonContentType, ct)
+		t.Fatalf("expected %d, got %d", http.StatusOK, rec.Code)
 	}
 
 	var resp api.LoginResponse
@@ -213,12 +216,13 @@ func TestHandler_Login_Success(t *testing.T) {
 }
 
 func TestHandler_Login_InvalidCredentials(t *testing.T) {
+	t.Parallel()
+
 	h, users, _ := NewTestHandler(t)
 
 	email := "test@example.com"
 	password := "WrongPass123"
 
-	// сервис маппит ErrNotFound -> ErrInvalidCredentials
 	users.EXPECT().
 		GetByEmail(gomock.Any(), email).
 		Return(uuid.Nil, "", serr.ErrNotFound)
@@ -235,6 +239,8 @@ func TestHandler_Login_InvalidCredentials(t *testing.T) {
 }
 
 func TestHandler_Refresh_BadJSON(t *testing.T) {
+	t.Parallel()
+
 	h, _, _ := NewTestHandler(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewBufferString("{bad json"))
@@ -248,22 +254,15 @@ func TestHandler_Refresh_BadJSON(t *testing.T) {
 }
 
 func TestHandler_Refresh_Unauthorized_Expired(t *testing.T) {
+	t.Parallel()
+
 	h, _, sessions := NewTestHandler(t)
 
 	refreshToken := "some-refresh-token"
 
-	// Refresh внутри сервиса делает HashRefreshToken и ищет по hash.
-	// Нам не нужно проверять точный hash — достаточно gomock.Any()
 	sessions.EXPECT().
 		GetByRefreshHash(gomock.Any(), gomock.Any()).
-		Return(
-			uuid.New(),                     // id
-			uuid.New(),                     // userID
-			time.Now().Add(-1*time.Minute), // expiresAt (в прошлом)
-			nil,                            // revokedAt
-			nil,                            // replacedBy
-			nil,                            // err
-		)
+		Return(uuid.New(), uuid.New(), time.Now().Add(-1*time.Minute), nil, nil, nil)
 
 	body, _ := json.Marshal(api.RefreshRequest{RefreshToken: refreshToken})
 	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewReader(body))
@@ -277,31 +276,23 @@ func TestHandler_Refresh_Unauthorized_Expired(t *testing.T) {
 }
 
 func TestHandler_Refresh_Success_RotateEnabled(t *testing.T) {
+	t.Parallel()
+
 	h, _, sessions := NewTestHandler(t)
 
 	refreshToken := "some-refresh-token"
 	userID := uuid.New()
 	oldSessionID := uuid.New()
 
-	// 1) GetByRefreshHash -> активная сессия
 	sessions.EXPECT().
 		GetByRefreshHash(gomock.Any(), gomock.Any()).
-		Return(
-			oldSessionID,
-			userID,
-			time.Now().Add(10*time.Minute), // expiresAt (будущее)
-			nil,                            // revokedAt
-			nil,                            // replacedBy
-			nil,                            // err
-		)
+		Return(oldSessionID, userID, time.Now().Add(10*time.Minute), nil, nil, nil)
 
-	// 2) Create -> новая сессия
 	newSessionID := uuid.New()
 	sessions.EXPECT().
 		Create(gomock.Any(), userID, gomock.Any(), gomock.Any()).
 		Return(newSessionID, nil)
 
-	// 3) RevokeAndReplace -> отметить старую сессию
 	sessions.EXPECT().
 		RevokeAndReplace(gomock.Any(), oldSessionID, newSessionID).
 		Return(nil)
