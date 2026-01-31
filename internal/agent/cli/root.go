@@ -67,6 +67,8 @@ func NewRootCmd(buildVersion, buildDate string) *cobra.Command {
 
 Описание команд:
 
+Замените gophkeeper на путь к файлу в cmd\gophkeeper\build\<сборка_вод_вашу_систему>
+
 Регистрация:
   Регистрирует нового пользователя в системе.
   gophkeeper register --email test@example.com --password StrongPass123

@@ -44,7 +44,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_server_api.LoginRequest"
+                            "$ref": "#/definitions/github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.LoginRequest"
                         }
                     }
                 ],
@@ -52,7 +52,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_server_api.LoginResponse"
+                            "$ref": "#/definitions/github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.LoginResponse"
                         }
                     },
                     "400": {
@@ -96,7 +96,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_server_api.RefreshRequest"
+                            "$ref": "#/definitions/github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.RefreshRequest"
                         }
                     }
                 ],
@@ -104,7 +104,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_server_api.RefreshResponse"
+                            "$ref": "#/definitions/github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.RefreshResponse"
                         }
                     },
                     "400": {
@@ -148,7 +148,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_server_api.RegisterRequest"
+                            "$ref": "#/definitions/github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.RegisterRequest"
                         }
                     }
                 ],
@@ -156,7 +156,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_server_api.RegisterResponse"
+                            "$ref": "#/definitions/github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.RegisterResponse"
                         }
                     },
                     "400": {
@@ -510,9 +510,26 @@ const docTemplate = `{
             }
         },
         "api.UpdateSecretRequest": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+                "meta": {
+                    "type": "string"
+                },
+                "payload": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
         },
-        "internal_server_api.LoginRequest": {
+        "github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.LoginRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -523,7 +540,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_server_api.LoginResponse": {
+        "github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.LoginResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -534,7 +551,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_server_api.RefreshRequest": {
+        "github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.RefreshRequest": {
             "type": "object",
             "properties": {
                 "refresh_token": {
@@ -542,7 +559,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_server_api.RefreshResponse": {
+        "github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.RefreshResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -553,7 +570,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_server_api.RegisterRequest": {
+        "github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.RegisterRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -564,7 +581,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_server_api.RegisterResponse": {
+        "github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.RegisterResponse": {
             "type": "object",
             "properties": {
                 "user_id": {
@@ -586,8 +603,8 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "localhost:8080",
-	BasePath:         "/api",
-	Schemes:          []string{},
+	BasePath:         "/",
+	Schemes:          []string{"https"},
 	Title:            "GophKeeper API",
 	Description:      "Secure password manager backend (GophKeeper).\nProvides user authentication and secret storage.",
 	InfoInstanceName: "swagger",

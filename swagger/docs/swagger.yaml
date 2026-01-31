@@ -1,4 +1,4 @@
-basePath: /api
+basePath: /
 definitions:
   api.CreateSecretRequest:
     properties:
@@ -56,41 +56,52 @@ definitions:
         type: integer
     type: object
   api.UpdateSecretRequest:
+    properties:
+      meta:
+        type: string
+      payload:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
+      version:
+        type: integer
     type: object
-  internal_server_api.LoginRequest:
+  github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.LoginRequest:
     properties:
       email:
         type: string
       password:
         type: string
     type: object
-  internal_server_api.LoginResponse:
+  github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.LoginResponse:
     properties:
       access_token:
         type: string
       refresh_token:
         type: string
     type: object
-  internal_server_api.RefreshRequest:
+  github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.RefreshRequest:
     properties:
       refresh_token:
         type: string
     type: object
-  internal_server_api.RefreshResponse:
+  github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.RefreshResponse:
     properties:
       access_token:
         type: string
       refresh_token:
         type: string
     type: object
-  internal_server_api.RegisterRequest:
+  github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.RegisterRequest:
     properties:
       email:
         type: string
       password:
         type: string
     type: object
-  internal_server_api.RegisterResponse:
+  github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.RegisterResponse:
     properties:
       user_id:
         type: string
@@ -122,14 +133,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_server_api.LoginRequest'
+          $ref: '#/definitions/github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_server_api.LoginResponse'
+            $ref: '#/definitions/github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.LoginResponse'
         "400":
           description: Invalid input or bad JSON
           schema:
@@ -156,14 +167,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_server_api.RefreshRequest'
+          $ref: '#/definitions/github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.RefreshRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_server_api.RefreshResponse'
+            $ref: '#/definitions/github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.RefreshResponse'
         "400":
           description: Invalid input or bad JSON
           schema:
@@ -190,14 +201,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_server_api.RegisterRequest'
+          $ref: '#/definitions/github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.RegisterRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_server_api.RegisterResponse'
+            $ref: '#/definitions/github_com_IvanChernomyrdin_go-yandex-gophkeeper_internal_server_api.RegisterResponse'
         "400":
           description: Invalid input or bad JSON
           schema:
@@ -377,6 +388,8 @@ paths:
       summary: Update secret
       tags:
       - secrets
+schemes:
+- https
 securityDefinitions:
   BearerAuth:
     in: header

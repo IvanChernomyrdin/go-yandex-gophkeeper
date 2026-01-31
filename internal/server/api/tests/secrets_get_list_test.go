@@ -7,9 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/mock/gomock"
-
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/api"
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/server/config"
@@ -20,15 +19,23 @@ import (
 	"github.com/IvanChernomyrdin/go-yandex-gophkeeper/internal/shared/models"
 )
 
-// Нет userID в context
-func TestHandler_ListSecrets_Unauthorized(t *testing.T) {
+// helper: создаёт Handler с моками SecretsService
+func newTestHandlerListSecrets(t *testing.T) (*api.Handler, *repoMocks.MockSecretsRepo) {
+	t.Helper()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	t.Cleanup(ctrl.Finish)
 
 	repo := repoMocks.NewMockSecretsRepo(ctrl)
-
 	svc := service.NewSecretsService(repo, config.SecretsConfig{})
-	h := api.NewHandler(&service.Services{Secrets: svc}, nil, nil)
+	handler := api.NewHandler(&service.Services{Secrets: svc}, nil, nil)
+
+	return handler, repo
+}
+
+func TestHandler_ListSecrets_Unauthorized(t *testing.T) {
+	t.Parallel()
+
+	h, _ := newTestHandlerListSecrets(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/secrets", nil)
 	rec := httptest.NewRecorder()
@@ -40,15 +47,10 @@ func TestHandler_ListSecrets_Unauthorized(t *testing.T) {
 	}
 }
 
-// Ошибка сервера
 func TestHandler_ListSecrets_InternalError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	t.Parallel()
 
-	repo := repoMocks.NewMockSecretsRepo(ctrl)
-
-	svc := service.NewSecretsService(repo, config.SecretsConfig{})
-	h := api.NewHandler(&service.Services{Secrets: svc}, nil, nil)
+	h, repo := newTestHandlerListSecrets(t)
 
 	userID := uuid.New()
 
@@ -57,9 +59,7 @@ func TestHandler_ListSecrets_InternalError(t *testing.T) {
 		Return(nil, serr.ErrInternal)
 
 	req := httptest.NewRequest(http.MethodGet, "/secrets", nil)
-	req = req.WithContext(
-		middleware.ContextWithUserID(req.Context(), userID),
-	)
+	req = req.WithContext(middleware.ContextWithUserID(req.Context(), userID))
 
 	rec := httptest.NewRecorder()
 	h.ListSecrets(rec, req)
@@ -69,15 +69,10 @@ func TestHandler_ListSecrets_InternalError(t *testing.T) {
 	}
 }
 
-// Успех
 func TestHandler_ListSecrets_Success(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	t.Parallel()
 
-	repo := repoMocks.NewMockSecretsRepo(ctrl)
-
-	svc := service.NewSecretsService(repo, config.SecretsConfig{})
-	h := api.NewHandler(&service.Services{Secrets: svc}, nil, nil)
+	h, repo := newTestHandlerListSecrets(t)
 
 	userID := uuid.New()
 
@@ -102,9 +97,7 @@ func TestHandler_ListSecrets_Success(t *testing.T) {
 		Return(repoResult, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/secrets", nil)
-	req = req.WithContext(
-		middleware.ContextWithUserID(req.Context(), userID),
-	)
+	req = req.WithContext(middleware.ContextWithUserID(req.Context(), userID))
 
 	rec := httptest.NewRecorder()
 	h.ListSecrets(rec, req)
